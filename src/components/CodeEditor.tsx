@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Sparkles, Play, Save, Copy, Check } from "lucide-react";
+import { Save, Copy, ChevronUp, ChevronDown, AlertCircle, Zap, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AiSelectionBubble } from "./AiSelectionBubble";
+import { Logger } from "./Logger";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { useToast } from "@/hooks/use-toast";
 import { 
   validateJunonCode, 
   getSuggestionContext, 
   getAutoIndent,
+  convertJunonToJSON,
   TRIGGER_EVENTS,
   COMMANDS,
   ValidationError 
@@ -34,6 +38,10 @@ export function CodeEditor() {
   const [suggestionType, setSuggestionType] = useState<string>('none');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(0);
+  const [bottomPanelOpen, setBottomPanelOpen] = useState(false);
+  const [bottomPanelMode, setBottomPanelMode] = useState<"quick" | "logger">("quick");
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
   
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const codeDisplayRef = useRef<HTMLPreElement>(null);
@@ -223,11 +231,37 @@ export function CodeEditor() {
     if (!textarea) return;
     
     const cursorPos = textarea.selectionStart;
-    const newCode = code.slice(0, cursorPos) + text + code.slice(cursorPos);
+    const beforeCursor = code.slice(0, cursorPos);
+    const afterCursor = code.slice(cursorPos);
+    
+    // Check if there's a partial @ keyword that should be replaced
+    // Look for @ followed by optional word chars and optional trailing whitespace
+    const lineMatch = beforeCursor.match(/(@\w*\s*)$/);
+    let replaceStart = cursorPos;
+    let insertText = text;
+    
+    if (lineMatch) {
+      // Found a partial @ keyword, replace it (including any trailing spaces)
+      const partialMatch = lineMatch[1];
+      replaceStart = cursorPos - partialMatch.length;
+      
+      // Remove leading newline from text if we're replacing on the same line
+      if (text.startsWith('\n') && !beforeCursor.endsWith('\n')) {
+        insertText = text.slice(1);
+      }
+    } else {
+      // No partial match, but check if we should remove leading newline
+      // if we're at the start of a line or after whitespace
+      if (text.startsWith('\n') && (beforeCursor.trimEnd().endsWith('\n') || beforeCursor.trim() === '')) {
+        insertText = text.slice(1);
+      }
+    }
+    
+    const newCode = code.slice(0, replaceStart) + insertText + afterCursor;
     setCode(newCode);
     
     setTimeout(() => {
-      textarea.selectionStart = textarea.selectionEnd = cursorPos + text.length;
+      textarea.selectionStart = textarea.selectionEnd = replaceStart + insertText.length;
       textarea.focus();
     }, 0);
   };
@@ -240,8 +274,14 @@ export function CodeEditor() {
         return [
           { label: '@trigger', value: '\n@trigger ' },
           { label: '@commands', value: '\n    @commands\n        ' },
-          { label: '@if', value: '\n    @if ' },
-          { label: '@timer', value: '\n    @timer ' },
+          { 
+            label: '@if', 
+            value: '\n    @if player.health == 100\n        then /chat Player is at full health\n        elseif player.health != 100\n        then /heal player' 
+          },
+          { 
+            label: '@timer', 
+            value: '\n    @timer 5000\n        /chat 5 seconds passed' 
+          },
         ];
     }
   };
@@ -259,6 +299,73 @@ export function CodeEditor() {
       fileNameInputRef.current.select();
     }
   }, [isEditingFileName]);
+
+  // Auto-open logger panel when errors appear
+  useEffect(() => {
+    if (errors.length > 0 && !bottomPanelOpen) {
+      setBottomPanelMode("logger");
+      setBottomPanelOpen(true);
+    }
+  }, [errors.length, bottomPanelOpen]);
+
+  const handleErrorClick = (line: number) => {
+    if (!editorRef.current) return;
+    const lines = code.split('\n');
+    let position = 0;
+    for (let i = 0; i < line && i < lines.length; i++) {
+      position += lines[i].length + 1; // +1 for newline
+    }
+    editorRef.current.selectionStart = editorRef.current.selectionEnd = position;
+    editorRef.current.focus();
+    editorRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
+
+  const handleSave = () => {
+    if (errors.length > 0) return;
+    
+    try {
+      const jsonData = convertJunonToJSON(code);
+      const jsonString = JSON.stringify(jsonData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${fileName}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Saved successfully",
+        description: `Code saved as ${fileName}.json`,
+      });
+    } catch (error) {
+      toast({
+        title: "Error saving file",
+        description: "Failed to convert code to JSON",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+      toast({
+        title: "Copied to clipboard",
+        description: "Code copied successfully",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="flex flex-col h-full">
@@ -294,24 +401,44 @@ export function CodeEditor() {
           )}
           <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
           {errors.length > 0 && (
-            <span className="text-xs text-destructive">{errors.length} error(s)</span>
+            <button
+              onClick={() => {
+                setBottomPanelMode("logger");
+                setBottomPanelOpen(true);
+              }}
+              className="text-xs text-destructive hover:underline cursor-pointer"
+            >
+              {errors.length} error(s)
+            </button>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
-            <Copy className="w-4 h-4" />
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-muted-foreground hover:text-primary"
+            onClick={handleCopy}
+            title="Copy code to clipboard"
+          >
+            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
           </Button>
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="text-muted-foreground hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleSave}
+            disabled={errors.length > 0}
+            title={errors.length > 0 ? "Fix errors before saving" : "Save code as JSON"}
+          >
             <Save className="w-4 h-4" />
-          </Button>
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-accent">
-            <Play className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
-      {/* Code Area */}
-      <div className="flex-1 relative overflow-hidden bg-background">
+      {/* Code Area with Resizable Bottom Panel */}
+      <ResizablePanelGroup direction="vertical" className="flex-1">
+        <ResizablePanel defaultSize={bottomPanelOpen ? 70 : 100} minSize={30}>
+          <div className="h-full relative overflow-hidden bg-background">
         {/* Line numbers - fixed position */}
         <div 
           ref={lineNumbersRef}
@@ -336,7 +463,7 @@ export function CodeEditor() {
         {/* Code display layer */}
         <pre 
           ref={codeDisplayRef}
-          className="absolute inset-0 pl-14 pr-4 pt-4 pb-20 font-mono text-sm leading-6 whitespace-pre overflow-hidden pointer-events-none"
+          className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 whitespace-pre overflow-hidden pointer-events-none"
           aria-hidden="true"
         >
           {code.split('\n').map((line, lineIndex) => (
@@ -354,7 +481,7 @@ export function CodeEditor() {
           onClick={handleClick}
           onKeyDown={handleKeyDown}
           onScroll={handleScroll}
-          className="absolute inset-0 pl-14 pr-4 pt-4 pb-20 font-mono text-sm leading-6 bg-transparent text-transparent caret-primary resize-none focus:outline-none overflow-auto z-20"
+          className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 bg-transparent text-transparent caret-primary resize-none focus:outline-none overflow-auto z-20"
           spellCheck={false}
         />
 
@@ -374,38 +501,110 @@ export function CodeEditor() {
             ))}
           </div>
         )}
-      </div>
-
-      {/* Bottom Input Bar */}
-      <div className="p-4 border-t border-border/50 glass-panel">
-        <div className="flex items-center gap-3">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              placeholder="Type a command or describe what you want to build..."
-              className="w-full bg-input border border-border rounded-lg px-4 py-3 pr-12 font-ui text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/50 transition-all"
-            />
-            <Button
-              size="sm"
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-primary-foreground"
-            >
-              <Sparkles className="w-4 h-4" />
-            </Button>
           </div>
+        </ResizablePanel>
+
+        {bottomPanelOpen && (
+          <>
+            <ResizableHandle withHandle />
+            <ResizablePanel defaultSize={30} minSize={10} maxSize={60}>
+              <div className="h-full flex flex-col glass-panel border-t border-border/50">
+                {/* Panel Header */}
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border/30">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setBottomPanelMode("quick")}
+                      className={`flex items-center gap-1 px-3 py-1 rounded text-xs font-ui transition-colors ${
+                        bottomPanelMode === "quick"
+                          ? "bg-primary/10 text-primary neon-border"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <Zap className="w-3 h-3" />
+                      Quick
+                    </button>
+                    <button
+                      onClick={() => setBottomPanelMode("logger")}
+                      className={`flex items-center gap-1 px-3 py-1 rounded text-xs font-ui transition-colors ${
+                        bottomPanelMode === "logger"
+                          ? "bg-destructive/10 text-destructive neon-border"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }`}
+                    >
+                      <AlertCircle className="w-3 h-3" />
+                      Logger
+                      {errors.length > 0 && (
+                        <span className="ml-1 px-1.5 py-0.5 rounded-full bg-destructive text-destructive-foreground text-[10px]">
+                          {errors.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                  <button
+                    onClick={() => setBottomPanelOpen(false)}
+                    className="w-6 h-6 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Panel Content */}
+                <div className="flex-1 overflow-hidden">
+                  {bottomPanelMode === "quick" ? (
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {getQuickSuggestions().map(({ label, value }) => (
+                          <button
+                            key={label}
+                            onClick={() => handleQuickInsert(value)}
+                            className="text-xs px-3 py-1.5 rounded bg-muted hover:bg-muted/80 text-primary transition-colors font-mono"
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <Logger errors={errors} onErrorClick={handleErrorClick} />
+                  )}
+                </div>
+              </div>
+            </ResizablePanel>
+          </>
+        )}
+      </ResizablePanelGroup>
+
+      {/* Panel Toggle Button (when closed) */}
+      {!bottomPanelOpen && (
+        <div className="border-t border-border/50 glass-panel">
+          <button
+            onClick={() => {
+              setBottomPanelOpen(true);
+              if (errors.length > 0) {
+                setBottomPanelMode("logger");
+              } else {
+                setBottomPanelMode("quick");
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ChevronUp className="w-4 h-4" />
+            <span className="font-ui">
+              {errors.length > 0 ? (
+                <>
+                  <AlertCircle className="w-3 h-3 inline mr-1 text-destructive" />
+                  {errors.length} error(s) - Click to view Logger
+                </>
+              ) : (
+                <>
+                  <Zap className="w-3 h-3 inline mr-1" />
+                  Quick - Click to open
+                </>
+              )}
+            </span>
+          </button>
         </div>
-        <div className="flex items-center gap-2 mt-2">
-          <span className="text-xs text-muted-foreground">Quick:</span>
-          {getQuickSuggestions().map(({ label, value }) => (
-            <button
-              key={label}
-              onClick={() => handleQuickInsert(value)}
-              className="text-xs px-2 py-1 rounded bg-muted hover:bg-muted/80 text-primary transition-colors"
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* AI Selection Bubble */}
       {showAiBubble && selectionPosition && (

@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Code2, BookOpen, Boxes, Settings, Zap, ExternalLink } from "lucide-react";
+import { Code2, BookOpen, Boxes, Settings, ExternalLink } from "lucide-react";
+import combatArmorIcon from "@/assets/combat_armor.png";
 import { CodeEditor } from "@/components/CodeEditor";
 import { Documentation } from "@/components/Documentation";
 import { SnippetsGallery } from "@/components/SnippetsGallery";
@@ -43,14 +44,16 @@ export default function Index() {
       <header className="h-14 border-b border-border/50 glass-panel flex items-center justify-between px-4">
         {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <Zap className="w-4 h-4 text-primary-foreground" />
-          </div>
+          <img 
+            src={combatArmorIcon} 
+            alt="JUNON" 
+            className="w-8 h-8"
+          />
           <div>
             <h1 className="text-lg font-display text-primary neon-glow leading-none">
-              JUNON<span className="text-secondary">CODE</span>
+              JUNON
             </h1>
-            <p className="text-[10px] text-muted-foreground font-ui uppercase tracking-widest">Builder</p>
+            <p className="text-[10px] text-muted-foreground font-ui uppercase tracking-widest">Code</p>
           </div>
         </div>
 

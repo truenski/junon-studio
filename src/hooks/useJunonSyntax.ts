@@ -65,6 +65,29 @@ export interface SuggestionContext {
   suggestions: string[];
 }
 
+// JSON Model Interfaces
+export interface ConditionBlock {
+  condition: string;
+  then: string[];
+  elseif?: ConditionBlock[];
+}
+
+export interface TimerBlock {
+  delay: number;
+  commands: string[];
+}
+
+export interface TriggerBlock {
+  event: string;
+  commands?: string[];
+  conditions?: ConditionBlock[];
+  timers?: TimerBlock[];
+}
+
+export interface JunonCodeJSON {
+  triggers: TriggerBlock[];
+}
+
 export function validateJunonCode(code: string): ValidationError[] {
   const errors: ValidationError[] = [];
   const lines = code.split('\n');
@@ -79,13 +102,12 @@ export function validateJunonCode(code: string): ValidationError[] {
     
     // Check for @trigger
     if (trimmed.startsWith('@trigger')) {
+      // A new @trigger automatically closes the previous trigger block
+      // This allows multiple trigger blocks to be defined sequentially
       if (inTrigger) {
-        errors.push({
-          line: lineIndex,
-          column: 0,
-          length: trimmed.length,
-          message: 'Cannot nest @trigger blocks. Close previous trigger first.'
-        });
+        // Close the previous trigger block
+        inTrigger = false;
+        hasCommands = false;
       }
       
       // Validate trigger event
@@ -115,6 +137,7 @@ export function validateJunonCode(code: string): ValidationError[] {
         }
       }
       
+      // Start new trigger block
       inTrigger = true;
       hasCommands = false;
       triggerIndent = indent;
@@ -211,7 +234,10 @@ export function validateJunonCode(code: string): ValidationError[] {
       }
     }
     
-    // Reset trigger state when unindented
+    // Reset trigger state when unindented (but allow empty lines to keep trigger open)
+    // A trigger block is considered closed when:
+    // 1. A new @trigger is found (handled above)
+    // 2. We return to indent level 0 with a non-empty line that's not a @trigger
     if (inTrigger && indent === 0 && !trimmed.startsWith('@trigger') && trimmed.length > 0) {
       inTrigger = false;
       hasCommands = false;
@@ -219,6 +245,136 @@ export function validateJunonCode(code: string): ValidationError[] {
   });
   
   return errors;
+}
+
+export function convertJunonToJSON(code: string): JunonCodeJSON {
+  const triggers: TriggerBlock[] = [];
+  const lines = code.split('\n');
+  
+  let currentTrigger: TriggerBlock | null = null;
+  let currentCommands: string[] = [];
+  let currentConditions: ConditionBlock[] = [];
+  let currentTimers: TimerBlock[] = [];
+  let inCommands = false;
+  let currentCondition: ConditionBlock | null = null;
+  let currentTimer: TimerBlock | null = null;
+  let inTimer = false;
+  let triggerIndent = 0;
+  
+  const saveCurrentTrigger = () => {
+    if (currentTrigger) {
+      if (currentCommands.length > 0) currentTrigger.commands = currentCommands;
+      if (currentConditions.length > 0) currentTrigger.conditions = currentConditions;
+      if (currentTimers.length > 0) currentTrigger.timers = currentTimers;
+      triggers.push(currentTrigger);
+    }
+  };
+  
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) return; // Skip empty lines
+    
+    const indent = line.length - line.trimStart().length;
+    
+    // New trigger block
+    if (trimmed.startsWith('@trigger')) {
+      saveCurrentTrigger();
+      
+      const match = trimmed.match(/@trigger\s+(\w+)/);
+      if (match) {
+        currentTrigger = { event: match[1] };
+        currentCommands = [];
+        currentConditions = [];
+        currentTimers = [];
+        currentCondition = null;
+        currentTimer = null;
+        inCommands = false;
+        inTimer = false;
+        triggerIndent = indent;
+      }
+    }
+    // Commands block
+    else if (trimmed.startsWith('@commands') && currentTrigger && indent > triggerIndent) {
+      inCommands = true;
+      inTimer = false;
+      currentCondition = null;
+    }
+    // If condition
+    else if (trimmed.startsWith('@if') && currentTrigger && indent > triggerIndent) {
+      inCommands = false;
+      inTimer = false;
+      const conditionMatch = trimmed.match(/@if\s+(.+)/);
+      if (conditionMatch) {
+        currentCondition = {
+          condition: conditionMatch[1].trim(),
+          then: [],
+          elseif: []
+        };
+        currentConditions.push(currentCondition);
+      }
+    }
+    // Then clause
+    else if (trimmed.startsWith('then') && currentCondition && indent > triggerIndent) {
+      const thenMatch = trimmed.match(/then\s+(.+)/);
+      if (thenMatch) {
+        currentCondition.then.push(thenMatch[1].trim());
+      }
+    }
+    // Elseif clause
+    else if (trimmed.startsWith('elseif') && currentCondition && indent > triggerIndent) {
+      const elseifMatch = trimmed.match(/elseif\s+(.+?)(?:\s+then\s+(.+))?$/);
+      if (elseifMatch) {
+        if (!currentCondition.elseif) {
+          currentCondition.elseif = [];
+        }
+        const elseifBlock: ConditionBlock = {
+          condition: elseifMatch[1].trim(),
+          then: elseifMatch[2] ? [elseifMatch[2].trim()] : []
+        };
+        currentCondition.elseif.push(elseifBlock);
+      }
+    }
+    // Timer block
+    else if (trimmed.startsWith('@timer') && currentTrigger && indent > triggerIndent) {
+      inCommands = false;
+      inTimer = true;
+      currentCondition = null;
+      const timerMatch = trimmed.match(/@timer\s+(\d+)/);
+      if (timerMatch) {
+        currentTimer = {
+          delay: parseInt(timerMatch[1], 10),
+          commands: []
+        };
+        currentTimers.push(currentTimer);
+      }
+    }
+    // Command line
+    else if (trimmed.startsWith('/') && trimmed.length > 1) {
+      if (inCommands && currentTrigger) {
+        currentCommands.push(trimmed);
+      } else if (inTimer && currentTimer) {
+        currentTimer.commands.push(trimmed);
+      } else if (currentCondition) {
+        // Command in then/elseif block
+        const thenMatch = trimmed.match(/then\s+(.+)/);
+        if (thenMatch) {
+          currentCondition.then.push(thenMatch[1].trim());
+        } else {
+          // Direct command in condition block
+          if (currentCondition.then.length === 0) {
+            currentCondition.then.push(trimmed);
+          } else {
+            // Add to last then or create new
+            currentCondition.then.push(trimmed);
+          }
+        }
+      }
+    }
+  });
+  
+  saveCurrentTrigger();
+  
+  return { triggers };
 }
 
 export function getSuggestionContext(code: string, cursorPosition: number): SuggestionContext {
