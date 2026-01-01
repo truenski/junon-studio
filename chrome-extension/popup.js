@@ -6,6 +6,7 @@ let selectedType = null; // 'file' or 'snippet'
 document.addEventListener('DOMContentLoaded', async () => {
   setupTabs();
   setupSyncButton();
+  setupJsonImport();
   await loadData();
   
   // Also listen for storage changes to auto-update
@@ -158,63 +159,12 @@ function updateImportButton() {
       
       const code = selectedType === 'file' ? selectedItem.content : selectedItem.code;
       
-      // Get current tab - try to find junon.io tab
-      const tabs = await chrome.tabs.query({});
-      const junonTab = tabs.find(t => t.url && (t.url.includes('junon.io') || t.url.includes('junon')));
+      // Use the shared import function
+      importBtn.disabled = true;
+      importBtn.textContent = 'Importing...';
       
-      if (!junonTab) {
-        showStatus('Please open junon.io in a tab first', 'error');
-        return;
-      }
-      
-      // Switch to junon.io tab if not already there
-      if (junonTab.id) {
-        await chrome.tabs.update(junonTab.id, { active: true });
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-      
-      // Send message to content script
       try {
-        importBtn.disabled = true;
-        importBtn.textContent = 'Importing...';
-        showStatus('Starting import...', 'success');
-        
-        // Inject content script if not already injected
-        try {
-          await chrome.scripting.executeScript({
-            target: { tabId: junonTab.id },
-            files: ['parser.js', 'content.js']
-          });
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        } catch (injectError) {
-          console.warn('Script may already be injected:', injectError);
-        }
-        
-        const response = await chrome.tabs.sendMessage(junonTab.id, {
-          action: 'importCode',
-          code: code
-        });
-        
-        if (response && response.success) {
-          const message = response.triggersProcessed 
-            ? `Successfully imported ${response.triggersProcessed} trigger(s)!`
-            : 'Code imported successfully!';
-          showStatus(message, 'success');
-        } else {
-          showStatus('Import failed: ' + (response?.error || 'Unknown error'), 'error');
-        }
-      } catch (error) {
-        console.error('Import error:', error);
-        let errorMessage = error.message;
-        
-        // Provide more helpful error messages
-        if (error.message.includes('Could not establish connection')) {
-          errorMessage = 'Please refresh the junon.io page and try again';
-        } else if (error.message.includes('Cannot access')) {
-          errorMessage = 'Please make sure you are on the junon.io page';
-        }
-        
-        showStatus('Import error: ' + errorMessage, 'error');
+        await importCodeToJunon(code);
       } finally {
         importBtn.disabled = false;
         importBtn.textContent = 'Import to Junon.io';
@@ -223,6 +173,351 @@ function updateImportButton() {
   }
   
   importBtn.style.display = selectedItem ? 'block' : 'none';
+}
+
+function setupJsonImport() {
+  const parseBtn = document.getElementById('parseJsonBtn');
+  const jsonInput = document.getElementById('jsonInput');
+  
+  if (!parseBtn || !jsonInput) {
+    console.error('[Popup] JSON import elements not found');
+    return;
+  }
+  
+  parseBtn.addEventListener('click', async () => {
+    const jsonText = jsonInput.value.trim();
+    
+    if (!jsonText) {
+      showStatus('Please paste JSON content', 'error');
+      return;
+    }
+    
+    try {
+      console.log('[Popup] Parsing JSON:', jsonText.substring(0, 100));
+      
+      // Parse JSON
+      const jsonData = JSON.parse(jsonText);
+      console.log('[Popup] Parsed JSON data:', jsonData);
+      
+      // Convert JSON to Junon code
+      const code = convertJSONToJunon(jsonData);
+      console.log('[Popup] Converted code:', code);
+      
+      if (!code || code.trim().length === 0) {
+        showStatus('Invalid JSON format or empty result. Expected format: {"triggers": [...]}', 'error');
+        return;
+      }
+      
+      // Import the code
+      parseBtn.disabled = true;
+      parseBtn.textContent = 'Importing...';
+      showStatus('Converting JSON to code...', 'success');
+      
+      try {
+        await importCodeToJunon(code);
+        // Clear JSON input on success
+        jsonInput.value = '';
+      } catch (importError) {
+        console.error('[Popup] Import error:', importError);
+        showStatus('Import failed: ' + importError.message, 'error');
+      } finally {
+        parseBtn.disabled = false;
+        parseBtn.textContent = 'Parse & Import JSON';
+      }
+      
+    } catch (error) {
+      console.error('[Popup] JSON parse error:', error);
+      showStatus('Invalid JSON: ' + error.message, 'error');
+      parseBtn.disabled = false;
+      parseBtn.textContent = 'Parse & Import JSON';
+    }
+  });
+}
+
+function convertJSONToJunon(json) {
+  if (!json || !json.triggers || !Array.isArray(json.triggers)) {
+    return null;
+  }
+  
+  let code = '';
+  
+  json.triggers.forEach((trigger, index) => {
+    if (index > 0) code += '\n';
+    
+    // Trigger
+    if (!trigger.event) return;
+    code += `@trigger ${trigger.event}\n`;
+    
+    // Commands
+    if (trigger.commands && Array.isArray(trigger.commands) && trigger.commands.length > 0) {
+      code += '    @commands\n';
+      trigger.commands.forEach(cmd => {
+        if (cmd) code += `        ${cmd}\n`;
+      });
+    }
+    
+    // Conditions
+    if (trigger.conditions && Array.isArray(trigger.conditions) && trigger.conditions.length > 0) {
+      trigger.conditions.forEach(condition => {
+        if (!condition.condition) return;
+        code += `    @if ${condition.condition}\n`;
+        
+        // Then
+        if (condition.then && Array.isArray(condition.then) && condition.then.length > 0) {
+          condition.then.forEach(cmd => {
+            if (cmd) code += `        then ${cmd}\n`;
+          });
+        }
+        
+        // Elseif
+        if (condition.elseif && Array.isArray(condition.elseif) && condition.elseif.length > 0) {
+          condition.elseif.forEach(elseif => {
+            if (!elseif.condition) return;
+            code += `        elseif ${elseif.condition}\n`;
+            if (elseif.then && Array.isArray(elseif.then) && elseif.then.length > 0) {
+              elseif.then.forEach(cmd => {
+                if (cmd) code += `            then ${cmd}\n`;
+              });
+            }
+          });
+        }
+      });
+    }
+    
+    // Timers
+    if (trigger.timers && Array.isArray(trigger.timers) && trigger.timers.length > 0) {
+      trigger.timers.forEach(timer => {
+        if (timer.delay !== undefined) {
+          code += `    @timer ${timer.delay}\n`;
+          if (timer.commands && Array.isArray(timer.commands) && timer.commands.length > 0) {
+            timer.commands.forEach(cmd => {
+              if (cmd) code += `        ${cmd}\n`;
+            });
+          }
+        }
+      });
+    }
+  });
+  
+  return code.trim();
+}
+
+async function importCodeToJunon(code) {
+  // Get current tab - try to find junon.io tab
+  const tabs = await chrome.tabs.query({});
+  const junonTab = tabs.find(t => t.url && (t.url.includes('junon.io') || t.url.includes('junon')));
+  
+  if (!junonTab) {
+    throw new Error('Please open junon.io in a tab first');
+  }
+  
+  console.log('[Popup] Found junon.io tab:', junonTab.id, junonTab.url);
+  
+  // Don't switch tabs - keep popup open
+  // Just ensure the tab is accessible
+  try {
+    await chrome.tabs.get(junonTab.id);
+  } catch (e) {
+    throw new Error('Cannot access junon.io tab. Please refresh the page.');
+  }
+  
+  try {
+    showStatus('Injecting scripts...', 'success');
+    
+    // Inject content script if not already injected
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: junonTab.id },
+        files: ['parser.js', 'content.js']
+      });
+      console.log('[Popup] Scripts injected successfully');
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    } catch (injectError) {
+      console.warn('[Popup] Script injection warning:', injectError);
+      // Continue anyway - scripts might already be injected
+    }
+    
+    showStatus('Sending code to junon.io...', 'success');
+    
+    // Wait a bit more to ensure scripts are ready
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const response = await chrome.tabs.sendMessage(junonTab.id, {
+      action: 'importCode',
+      code: code
+    });
+    
+    console.log('[Popup] Response from content script:', response);
+    
+    if (response && response.success) {
+      const message = response.triggersProcessed 
+        ? `Successfully imported ${response.triggersProcessed} trigger(s)!`
+        : 'Code imported successfully!';
+      showStatus(message, 'success');
+    } else {
+      const errorMsg = response?.error || 'Unknown error';
+      console.error('[Popup] Import failed:', errorMsg);
+      showStatus('Import failed: ' + errorMsg, 'error');
+      throw new Error(errorMsg);
+    }
+  } catch (error) {
+    console.error('[Popup] Import error:', error);
+    let errorMessage = error.message;
+    
+    if (error.message.includes('Could not establish connection')) {
+      errorMessage = 'Content script not ready. Please refresh the junon.io page and try again.';
+    } else if (error.message.includes('Cannot access')) {
+      errorMessage = 'Please make sure you are on the junon.io page';
+    } else if (error.message.includes('Receiving end does not exist')) {
+      errorMessage = 'Content script not loaded. Please refresh junon.io page.';
+    }
+    
+    showStatus('Import error: ' + errorMessage, 'error');
+    throw error;
+  }
+}
+
+function convertJSONToJunon(json) {
+  if (!json || !json.triggers || !Array.isArray(json.triggers)) {
+    return null;
+  }
+  
+  let code = '';
+  
+  json.triggers.forEach((trigger, index) => {
+    if (index > 0) code += '\n';
+    
+    // Trigger
+    if (!trigger.event) return;
+    code += `@trigger ${trigger.event}\n`;
+    
+    // Commands
+    if (trigger.commands && Array.isArray(trigger.commands) && trigger.commands.length > 0) {
+      code += '    @commands\n';
+      trigger.commands.forEach(cmd => {
+        if (cmd) code += `        ${cmd}\n`;
+      });
+    }
+    
+    // Conditions
+    if (trigger.conditions && Array.isArray(trigger.conditions) && trigger.conditions.length > 0) {
+      trigger.conditions.forEach(condition => {
+        if (!condition.condition) return;
+        code += `    @if ${condition.condition}\n`;
+        
+        // Then
+        if (condition.then && Array.isArray(condition.then) && condition.then.length > 0) {
+          condition.then.forEach(cmd => {
+            if (cmd) code += `        then ${cmd}\n`;
+          });
+        }
+        
+        // Elseif
+        if (condition.elseif && Array.isArray(condition.elseif) && condition.elseif.length > 0) {
+          condition.elseif.forEach(elseif => {
+            if (!elseif.condition) return;
+            code += `        elseif ${elseif.condition}\n`;
+            if (elseif.then && Array.isArray(elseif.then) && elseif.then.length > 0) {
+              elseif.then.forEach(cmd => {
+                if (cmd) code += `            then ${cmd}\n`;
+              });
+            }
+          });
+        }
+      });
+    }
+    
+    // Timers
+    if (trigger.timers && Array.isArray(trigger.timers) && trigger.timers.length > 0) {
+      trigger.timers.forEach(timer => {
+        if (timer.delay !== undefined) {
+          code += `    @timer ${timer.delay}\n`;
+          if (timer.commands && Array.isArray(timer.commands) && timer.commands.length > 0) {
+            timer.commands.forEach(cmd => {
+              if (cmd) code += `        ${cmd}\n`;
+            });
+          }
+        }
+      });
+    }
+  });
+  
+  return code.trim();
+}
+
+async function importCodeToJunon(code) {
+  // Get current tab - try to find junon.io tab
+  const tabs = await chrome.tabs.query({});
+  const junonTab = tabs.find(t => t.url && (t.url.includes('junon.io') || t.url.includes('junon')));
+  
+  if (!junonTab) {
+    throw new Error('Please open junon.io in a tab first');
+  }
+  
+  console.log('[Popup] Found junon.io tab:', junonTab.id, junonTab.url);
+  
+  // Don't switch tabs - keep popup open
+  // Just ensure the tab is accessible
+  try {
+    await chrome.tabs.get(junonTab.id);
+  } catch (e) {
+    throw new Error('Cannot access junon.io tab. Please refresh the page.');
+  }
+  
+  try {
+    showStatus('Injecting scripts...', 'success');
+    
+    // Inject content script if not already injected
+    try {
+      await chrome.scripting.executeScript({
+        target: { tabId: junonTab.id },
+        files: ['parser.js', 'content.js']
+      });
+      console.log('[Popup] Scripts injected successfully');
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    } catch (injectError) {
+      console.warn('[Popup] Script injection warning:', injectError);
+      // Continue anyway - scripts might already be injected
+    }
+    
+    showStatus('Sending code to junon.io...', 'success');
+    
+    // Wait a bit more to ensure scripts are ready
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    const response = await chrome.tabs.sendMessage(junonTab.id, {
+      action: 'importCode',
+      code: code
+    });
+    
+    console.log('[Popup] Response from content script:', response);
+    
+    if (response && response.success) {
+      const message = response.triggersProcessed 
+        ? `Successfully imported ${response.triggersProcessed} trigger(s)!`
+        : 'Code imported successfully!';
+      showStatus(message, 'success');
+    } else {
+      const errorMsg = response?.error || 'Unknown error';
+      console.error('[Popup] Import failed:', errorMsg);
+      showStatus('Import failed: ' + errorMsg, 'error');
+      throw new Error(errorMsg);
+    }
+  } catch (error) {
+    console.error('[Popup] Import error:', error);
+    let errorMessage = error.message;
+    
+    if (error.message.includes('Could not establish connection')) {
+      errorMessage = 'Content script not ready. Please refresh the junon.io page and try again.';
+    } else if (error.message.includes('Cannot access')) {
+      errorMessage = 'Please make sure you are on the junon.io page';
+    } else if (error.message.includes('Receiving end does not exist')) {
+      errorMessage = 'Content script not loaded. Please refresh junon.io page.';
+    }
+    
+    showStatus('Import error: ' + errorMessage, 'error');
+    throw error;
+  }
 }
 
 function showStatus(message, type = 'success') {

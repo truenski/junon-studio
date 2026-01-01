@@ -1,0 +1,73 @@
+{
+  "game_url": "https://junon.io",
+  "selectors": {
+    "menu_container": "#command_block_menu",
+    "tabs": {
+      "container": ".command_block_tab_container",
+      "items": ".command_block_tab",
+      "triggers": ".command_block_tab[data-view='triggers']",
+      "logs": ".command_block_tab[data-view='logs']",
+      "functions": ".command_block_tab[data-view='functions']"
+    },
+    "triggers": {
+      "new_btn": ".add_trigger_btn",
+      "list_item": ".trigger_name",
+      "entry": ".trigger_entry",
+      "delete_btn": ".delete_trigger_btn",
+      "enable_toggle": "#enable_triggers"
+    },
+    "actions": {
+      "plus_icon": ".trigger_actions img",
+      "list_item": ".left_content_entry",
+      "entry": ".action_entry",
+      "name": ".action_name",
+      "delete_btn": ".delete_action_btn"
+    },
+    "common": {
+      "create_btn": ".menu_main_footer .btn_primary",
+      "cancel_btn": ".cancel_btn",
+      "input_text": "input[type='text']",
+      "input_number": "input[type='number']"
+    }
+  },
+  "available_triggers": [
+    "PlayerJoined", "PlayerLeft", "PlayerMessage", "PlayerAttacked", "PlayerDestroyed", 
+    "PlayerMove", "PlayerRespawn", "PlayerKeyboard", "MobAttacked", "MobDestroyed", 
+    "MobFeed", "MobTamed", "MobFollow", "MobRelease", "MobMount", "MobUnmount", 
+    "BuildingAttacked", "BuildingPlaced", "BuildingDeconstructed", "AsteroidMined", 
+    "ItemCrafted", "TeamMemberAdded", "TeamMemberRemoved", "RegionEnter", "RegionLeave", 
+    "ColonyLike", "ColonyUnlike", "WorldLoaded", "InteractBuilding", "HealthChanged", 
+    "OxygenChanged", "HungerChanged", "StaminaChanged", "ScoreChanged", "ItemBuy", 
+    "ItemSell", "ItemUsed", "ItemConsumed", "ItemDropped", "ItemPickup", "CropHarvested", 
+    "CropPlanted", "CorpseButchered", "CorpseDragged", "CorpseReleased", "FoodCooked", 
+    "RoleChanged", "GoldChanged", "ArmorEquipChanged", "PlatformCleaned", "StoragePut", 
+    "StorageGet", "ButtonClicked", "Timer:start", "Timer:tick", "Timer:end"
+  ],
+  "available_actions": [
+    "commands", 
+    "ifthenelse", 
+    "timer"
+  ],
+  "action_structures": {
+    "commands": {
+      "fields": ["command_text"],
+      "example": "/give $player potato 5"
+    },
+    "ifthenelse": {
+      "fields": ["condition", "then_actions", "else_actions"],
+      "selectors": {
+        "if_plus": ".ifthenelse_if .add_action_btn",
+        "then_plus": ".ifthenelse_then .add_action_btn",
+        "else_plus": ".ifthenelse_else .add_action_btn"
+      }
+    },
+    "timer": {
+      "fields": ["name", "duration", "tick_interval"],
+      "inputs": {
+        "name": "input[placeholder='name']",
+        "duration": "input[type='number']:nth-of-type(1)",
+        "tick": "input[type='number']:nth-of-type(2)"
+      }
+    }
+  }
+}

@@ -16,6 +16,7 @@
     <div class="tabs">
       <button class="tab-btn active" data-tab="files">Local Files</button>
       <button class="tab-btn" data-tab="snippets">Snippets</button>
+      <button class="tab-btn" data-tab="json">Import JSON</button>
     </div>
 
     <div id="filesTab" class="tab-content active">
@@ -33,6 +34,23 @@
         <div id="snippetsList" class="list">
           <div class="empty-state">No snippets found. Sync from editor first.</div>
         </div>
+      </div>
+    </div>
+
+    <div id="jsonTab" class="tab-content">
+      <div class="section">
+        <h2>Import JSON Format</h2>
+        <p style="font-size: 12px; color: #888; margin-bottom: 12px;">
+          Paste the JSON format saved from the editor and import it to junon.io
+        </p>
+        <textarea 
+          id="jsonInput" 
+          placeholder='Paste JSON here, e.g. {"triggers": [{"event": "PlayerJoined", "commands": ["/chat Welcome"]}]}'
+          style="width: 100%; min-height: 200px; padding: 8px; background: #252525; border: 1px solid #333; border-radius: 4px; color: #e0e0e0; font-family: monospace; font-size: 12px; resize: vertical;"
+        ></textarea>
+        <button id="parseJsonBtn" class="btn btn-secondary" style="width: 100%; margin-top: 12px;">
+          Parse & Import JSON
+        </button>
       </div>
     </div>
 
