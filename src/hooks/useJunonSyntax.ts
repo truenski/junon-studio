@@ -1,0 +1,291 @@
+// Junon syntax definitions and validation
+
+export const TRIGGER_EVENTS = [
+  'onPlayerJoin',
+  'onPlayerLeave', 
+  'onPlayerDeath',
+  'onPlayerRespawn',
+  'onPlayerChat',
+  'onEntitySpawn',
+  'onEntityDeath',
+  'onItemPickup',
+  'onItemDrop',
+  'onGameStart',
+  'onGameEnd',
+  'onRoundStart',
+  'onRoundEnd',
+] as const;
+
+export const COMMANDS = [
+  '/chat',
+  '/time',
+  '/weather',
+  '/give',
+  '/teleport',
+  '/heal',
+  '/kill',
+  '/spawn',
+  '/despawn',
+  '/effect',
+  '/clear',
+  '/setblock',
+  '/fill',
+  '/summon',
+] as const;
+
+export const CONDITIONS = [
+  'player.health',
+  'player.score',
+  'player.team',
+  'player.isAlive',
+  'player.inventory',
+  'entity.type',
+  'entity.health',
+  'game.time',
+  'game.round',
+  'game.players',
+] as const;
+
+export const OPERATORS = ['==', '!='] as const;
+
+export type TriggerEvent = typeof TRIGGER_EVENTS[number];
+export type Command = typeof COMMANDS[number];
+export type Condition = typeof CONDITIONS[number];
+export type Operator = typeof OPERATORS[number];
+
+export interface ValidationError {
+  line: number;
+  column: number;
+  length: number;
+  message: string;
+}
+
+export interface SuggestionContext {
+  type: 'trigger' | 'command' | 'condition' | 'operator' | 'none';
+  suggestions: string[];
+}
+
+export function validateJunonCode(code: string): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const lines = code.split('\n');
+  
+  let inTrigger = false;
+  let hasCommands = false;
+  let triggerIndent = 0;
+  
+  lines.forEach((line, lineIndex) => {
+    const trimmed = line.trim();
+    const indent = line.length - line.trimStart().length;
+    
+    // Check for @trigger
+    if (trimmed.startsWith('@trigger')) {
+      if (inTrigger) {
+        errors.push({
+          line: lineIndex,
+          column: 0,
+          length: trimmed.length,
+          message: 'Cannot nest @trigger blocks. Close previous trigger first.'
+        });
+      }
+      
+      // Validate trigger event
+      const match = trimmed.match(/@trigger\s+(\w+)/);
+      if (match) {
+        const eventName = match[1];
+        if (!TRIGGER_EVENTS.includes(eventName as TriggerEvent)) {
+          const triggerStart = trimmed.indexOf('@trigger');
+          const eventStart = trimmed.indexOf(eventName, triggerStart + 8);
+          errors.push({
+            line: lineIndex,
+            column: eventStart,
+            length: eventName.length,
+            message: `Unknown trigger event: ${eventName}. Valid events: ${TRIGGER_EVENTS.slice(0, 3).join(', ')}...`
+          });
+        }
+      } else if (!trimmed.match(/@trigger\s*$/)) {
+        // Has text after @trigger but doesn't match pattern
+        const afterTrigger = trimmed.slice(8).trim();
+        if (afterTrigger && !afterTrigger.startsWith('on')) {
+          errors.push({
+            line: lineIndex,
+            column: 8,
+            length: afterTrigger.length,
+            message: 'Trigger events must start with "on" (e.g., onPlayerJoin)'
+          });
+        }
+      }
+      
+      inTrigger = true;
+      hasCommands = false;
+      triggerIndent = indent;
+    }
+    
+    // Check for @commands
+    if (trimmed.startsWith('@commands')) {
+      if (!inTrigger) {
+        errors.push({
+          line: lineIndex,
+          column: 0,
+          length: 9,
+          message: '@commands must be inside a @trigger block'
+        });
+      } else if (hasCommands) {
+        errors.push({
+          line: lineIndex,
+          column: 0,
+          length: 9,
+          message: 'Only one @commands block allowed per @trigger'
+        });
+      } else if (indent <= triggerIndent) {
+        errors.push({
+          line: lineIndex,
+          column: 0,
+          length: 9,
+          message: '@commands must be indented inside @trigger'
+        });
+      }
+      hasCommands = true;
+    }
+    
+    // Check for @if
+    if (trimmed.startsWith('@if')) {
+      if (!inTrigger) {
+        errors.push({
+          line: lineIndex,
+          column: 0,
+          length: 3,
+          message: '@if must be inside a @trigger block'
+        });
+      } else if (indent <= triggerIndent) {
+        errors.push({
+          line: lineIndex,
+          column: 0,
+          length: 3,
+          message: '@if must be indented inside @trigger'
+        });
+      }
+    }
+    
+    // Check for @timer
+    if (trimmed.startsWith('@timer')) {
+      if (!inTrigger) {
+        errors.push({
+          line: lineIndex,
+          column: 0,
+          length: 6,
+          message: '@timer must be inside a @trigger block'
+        });
+      } else if (indent <= triggerIndent) {
+        errors.push({
+          line: lineIndex,
+          column: 0,
+          length: 6,
+          message: '@timer must be indented inside @trigger'
+        });
+      }
+    }
+    
+    // Check for @event (should be removed)
+    if (trimmed.startsWith('@event')) {
+      errors.push({
+        line: lineIndex,
+        column: trimmed.indexOf('@event'),
+        length: 6,
+        message: '@event is deprecated. Specify events in @trigger (e.g., @trigger onPlayerJoin)'
+      });
+    }
+    
+    // Check for standalone commands not in proper context
+    if (trimmed.startsWith('/') && inTrigger) {
+      const validCommand = COMMANDS.some(cmd => trimmed.startsWith(cmd));
+      if (!validCommand) {
+        const cmdMatch = trimmed.match(/^(\/\w+)/);
+        if (cmdMatch) {
+          errors.push({
+            line: lineIndex,
+            column: 0,
+            length: cmdMatch[1].length,
+            message: `Unknown command: ${cmdMatch[1]}`
+          });
+        }
+      }
+    }
+    
+    // Reset trigger state when unindented
+    if (inTrigger && indent === 0 && !trimmed.startsWith('@trigger') && trimmed.length > 0) {
+      inTrigger = false;
+      hasCommands = false;
+    }
+  });
+  
+  return errors;
+}
+
+export function getSuggestionContext(code: string, cursorPosition: number): SuggestionContext {
+  const beforeCursor = code.slice(0, cursorPosition);
+  const lines = beforeCursor.split('\n');
+  const currentLine = lines[lines.length - 1] || '';
+  const trimmed = currentLine.trim();
+  
+  // Check if we're typing after @trigger
+  if (/@trigger\s*$/.test(trimmed) || /@trigger\s+\w*$/.test(trimmed)) {
+    const partial = trimmed.match(/@trigger\s+(\w*)$/)?.[1] || '';
+    const filtered = TRIGGER_EVENTS.filter(e => 
+      e.toLowerCase().startsWith(partial.toLowerCase())
+    );
+    return { type: 'trigger', suggestions: filtered };
+  }
+  
+  // Check if we're in a position for commands
+  if (trimmed.startsWith('/') || trimmed === '') {
+    // Check if we're inside a trigger
+    const inTrigger = beforeCursor.includes('@trigger');
+    if (inTrigger) {
+      const partial = trimmed.startsWith('/') ? trimmed : '';
+      const filtered = COMMANDS.filter(c => 
+        c.toLowerCase().startsWith(partial.toLowerCase())
+      );
+      return { type: 'command', suggestions: filtered };
+    }
+  }
+  
+  // Check if we're typing a condition
+  if (/@if\s+\w*$/.test(trimmed)) {
+    const partial = trimmed.match(/@if\s+(\w*)$/)?.[1] || '';
+    const filtered = CONDITIONS.filter(c => 
+      c.toLowerCase().includes(partial.toLowerCase())
+    );
+    return { type: 'condition', suggestions: filtered };
+  }
+  
+  // Check if we need an operator
+  if (/@if\s+\w+\.\w+\s*$/.test(trimmed)) {
+    return { type: 'operator', suggestions: [...OPERATORS] };
+  }
+  
+  return { type: 'none', suggestions: [] };
+}
+
+export function getAutoIndent(code: string, cursorPosition: number): string {
+  const beforeCursor = code.slice(0, cursorPosition);
+  const lines = beforeCursor.split('\n');
+  const currentLine = lines[lines.length - 1] || '';
+  const trimmed = currentLine.trim();
+  
+  // Get current indentation
+  const currentIndent = currentLine.match(/^\s*/)?.[0] || '';
+  
+  // Increase indent after @trigger, @commands, @if, @timer, then, elseif
+  if (
+    trimmed.startsWith('@trigger') ||
+    trimmed.startsWith('@commands') ||
+    trimmed.startsWith('@if') ||
+    trimmed.startsWith('@timer') ||
+    trimmed.startsWith('then') ||
+    trimmed.startsWith('elseif')
+  ) {
+    return currentIndent + '    ';
+  }
+  
+  return currentIndent;
+}
