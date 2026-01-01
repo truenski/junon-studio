@@ -1,0 +1,25 @@
+---
+id: ItemUsed
+name: ItemUsed
+description: Event triggered when player uses item
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: itemType
+    type: string
+    description: Name of item
+examples:
+  - code: |
+      if ItemUsed
+        if $itemType == "survival_tool"
+          /chat $player "You used your survival tool"
+    description: Handle item usage events
+---
+
+Triggered when a player uses an item. Different objects have different effects and may need different handling for desired effects.
+

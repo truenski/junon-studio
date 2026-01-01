@@ -1,0 +1,28 @@
+---
+id: BuildingDeconstructed
+name: BuildingDeconstructed
+description: Event triggered when a building gets deconstructed.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the building
+  - name: entityType
+    type: string
+    description: The type of building
+  - name: player
+    type: string
+    description: The username of the player who deconstructed it
+  - name: playerId
+    type: number
+    description: The ID of the player
+examples:
+  - code: |
+      if BuildingDeconstructed
+        if $entityType == "Wall"
+          /chat $player "You broke a $entityType"
+    description: Notify player when they break specific buildings
+---
+
+Triggered when a building gets deconstructed. Useful for building removal tracking or deconstruction events.
+

@@ -1,0 +1,21 @@
+---
+id: PlayerLeft
+name: PlayerLeft
+description: Event triggered when a player leaves a game.
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The username of the player who left
+  - name: playerRole
+    type: string
+    description: The role of the player who left
+examples:
+  - code: |
+      if PlayerLeft
+        /chat @a "$player left the server"
+    description: Announce when a player leaves
+---
+
+Triggered when a player disconnects from the server.
+

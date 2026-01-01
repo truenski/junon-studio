@@ -1,0 +1,31 @@
+---
+id: RegionEnter
+name: RegionEnter
+description: Event triggered when entity enters a region
+lang: en
+variables:
+  - name: region
+    type: string
+    description: Name of region
+  - name: player
+    type: string
+    description: Username of player who entered
+  - name: playerRole
+    type: string
+    description: Role of player who entered
+  - name: entityId
+    type: number
+    description: ID of entity who entered
+  - name: entityType
+    type: string
+    description: Type of mob who entered
+examples:
+  - code: |
+      if RegionEnter
+        if $region == "spawn"
+          /chat $player "Welcome to spawn!"
+    description: Welcome message when entering specific regions
+---
+
+Triggered when a player or mob enters a region. Useful for area-based events, welcome messages, or region-specific mechanics.
+

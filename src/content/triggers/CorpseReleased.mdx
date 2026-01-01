@@ -1,0 +1,27 @@
+---
+id: CorpseReleased
+name: CorpseReleased
+description: Event triggered when corpse released
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: ID of user who released
+  - name: player
+    type: string
+    description: Username of player
+  - name: corpseType
+    type: string
+    description: Type of corpse
+  - name: corpseId
+    type: number
+    description: ID of corpse
+examples:
+  - code: |
+      if CorpseReleased
+        /chat $player "You released the $corpseType"
+    description: Track corpse release
+---
+
+Triggered when a player releases a corpse they were dragging. Useful for corpse management.
+

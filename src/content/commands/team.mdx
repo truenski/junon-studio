@@ -1,0 +1,65 @@
+---
+id: team
+name: /team
+description: Manage teams and team members.
+syntax:
+  - /team list
+  - /team add [name]
+  - /team remove [name]
+  - /team join [name] [player]
+  - /team leave [player]
+  - /team setleader [name] [player]
+  - /team assignleader [name]
+  - /team setowner [name] [region_name]
+  - /team rename [name] [newName]
+  - /team editrole [teamname] [rolename] [permission] [true|false]
+category: with-args
+lang: en
+args:
+  - name: name
+    type: string
+    required: false
+    description: The team name
+  - name: newName
+    type: string
+    required: false
+    description: The new team name
+  - name: player
+    type: string
+    required: false
+    description: The username of the player
+  - name: region_name
+    type: string
+    required: false
+    description: The name of the region
+  - name: teamname
+    type: string
+    required: false
+    description: The team name
+  - name: rolename
+    type: string
+    required: false
+    description: The role name within the team
+  - name: permission
+    type: string
+    required: false
+    description: The permission name (e.g., EditSign)
+  - name: true|false
+    type: boolean
+    required: false
+    description: Whether to enable or disable the permission
+examples:
+  - code: /team list
+    description: List all teams
+  - code: /team add BlueTeam
+    description: Create a new team named "BlueTeam"
+  - code: /team join BlueTeam PlayerName
+    description: Add PlayerName to BlueTeam
+  - code: /team setleader BlueTeam PlayerName
+    description: Set PlayerName as leader of BlueTeam
+  - code: /team editrole BlueTeam guest EditSign false
+    description: Disable EditSign permission for guest role in BlueTeam
+---
+
+Manages teams, team members, leaders, and team-specific permissions. Teams can own regions and have role-based permissions.
+

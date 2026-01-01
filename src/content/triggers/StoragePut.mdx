@@ -1,0 +1,33 @@
+---
+id: StoragePut
+name: StoragePut
+description: Event triggered when player puts item into storage
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: itemType
+    type: string
+    description: Name of item
+  - name: count
+    type: number
+    description: Count of item
+  - name: storageId
+    type: number
+    description: ID of storage
+  - name: storageType
+    type: string
+    description: Type of storage
+examples:
+  - code: |
+      if StoragePut
+        /chat $player "You stored $count $itemType"
+    description: Track storage operations
+---
+
+Triggered when a player puts items into storage. Useful for storage tracking or inventory management.
+

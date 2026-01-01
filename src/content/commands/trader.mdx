@@ -1,0 +1,36 @@
+---
+id: trader
+name: /trader
+description: Customize trader item lists and prices.
+syntax:
+  - /trader buy [item] [cost]
+  - /trader unbuy [item]
+  - /trader sellcustom [allow|deny]
+  - /trader sell [item] [cost]
+  - /trader unsell [item]
+category: with-args
+lang: en
+args:
+  - name: item
+    type: string
+    required: false
+    description: The item type
+  - name: cost
+    type: number
+    required: false
+    description: The cost in gold
+  - name: allow|deny
+    type: string
+    required: false
+    description: Whether to allow or deny custom selling
+examples:
+  - code: /trader buy survival_tool 100
+    description: Add survival_tool to trader's buy list for 100 gold
+  - code: /trader sell copper_ore 50
+    description: Add copper_ore to trader's sell list for 50 gold
+  - code: /trader sellcustom allow
+    description: Allow players to sell custom items to traders
+---
+
+Manages trader inventory and pricing. Controls what items traders buy and sell, and their prices.
+

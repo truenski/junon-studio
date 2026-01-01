@@ -1,0 +1,24 @@
+---
+id: name
+name: /name
+description: Modify building or mob label/name.
+syntax:
+  - /name [entity_id] [label]
+category: with-args
+lang: en
+args:
+  - name: entity_id
+    type: number
+    required: true
+    description: The entity ID
+  - name: label
+    type: string
+    required: true
+    description: The new label/name
+examples:
+  - code: '/name 1234 "My Building"'
+    description: Set the label of entity 1234 to "My Building"
+---
+
+Changes the display name or label of buildings or mobs.
+

@@ -1,0 +1,26 @@
+---
+id: speed
+name: /speed
+description: Modify player movement speed.
+syntax:
+  - /speed [player] [speed]
+category: with-args
+lang: en
+args:
+  - name: player
+    type: string
+    required: true
+    description: The username of the player
+  - name: speed
+    type: number
+    required: true
+    description: The speed value (1.0 is normal speed)
+examples:
+  - code: /speed PlayerName 2.0
+    description: Set PlayerName's speed to 2x normal
+  - code: /speed PlayerName 0.5
+    description: Set PlayerName's speed to half normal
+---
+
+Modifies player movement speed. Values above 1.0 increase speed, values below 1.0 decrease speed.
+

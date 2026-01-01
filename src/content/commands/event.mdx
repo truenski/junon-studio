@@ -1,0 +1,35 @@
+---
+id: event
+name: /event
+description: Trigger game events.
+syntax:
+  - /event [eventname]
+  - /event [eventname] [row] [col]
+category: with-args
+lang: en
+args:
+  - name: eventname
+    type: string
+    required: true
+    description: The name of the event (meteor, spider, raid, raid_end)
+  - name: row
+    type: number
+    required: false
+    description: The row coordinate for the event
+  - name: col
+    type: number
+    required: false
+    description: The column coordinate for the event
+examples:
+  - code: /event meteor
+    description: Trigger a meteor event
+  - code: /event spider 50 50
+    description: Trigger a spider event at coordinates (50, 50)
+  - code: /event raid
+    description: Start a raid event
+  - code: /event raid_end
+    description: End the current raid event
+---
+
+Triggers various game events. Available events include meteor, spider, raid, and raid_end.
+

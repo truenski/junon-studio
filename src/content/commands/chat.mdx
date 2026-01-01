@@ -1,0 +1,32 @@
+---
+id: chat
+name: /chat
+description: Send chat messages to players.
+syntax:
+  - /chat [text]
+  - /chat [player] [text]
+  - /chat @a [text]
+category: with-args
+lang: en
+args:
+  - name: player
+    type: string
+    required: false
+    description: The username of the player, or @a for all players
+  - name: text
+    type: string
+    required: true
+    description: The message text (can include format codes like %success% or %error%)
+examples:
+  - code: '/chat "Hello, world!"'
+    description: Send a message to yourself
+  - code: '/chat PlayerName "Welcome!"'
+    description: Send a private message to PlayerName
+  - code: /chat @a %success%Welcome players
+    description: Send a success message (green) to all players
+  - code: /chat @a %error%Something wrong happened
+    description: Send an error message (red) to all players
+---
+
+Sends chat messages to players. Supports format codes for colored messages (%success% for green, %error% for red).
+

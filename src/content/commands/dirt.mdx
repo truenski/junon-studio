@@ -1,0 +1,26 @@
+---
+id: dirt
+name: /dirt
+description: Add or remove dirt from an entity.
+syntax:
+  - /dirt add [entity_id]
+  - /dirt clear [entity_id]
+  - /dirt decrease [entity_id]
+category: with-args
+lang: en
+args:
+  - name: entity_id
+    type: number
+    required: true
+    description: The entity ID
+examples:
+  - code: /dirt add 1234
+    description: Add dirt to entity 1234
+  - code: /dirt clear 1234
+    description: Remove all dirt from entity 1234
+  - code: /dirt decrease 1234
+    description: Decrease dirt amount on entity 1234
+---
+
+Manages dirt accumulation on entities. Dirt can affect entity appearance and functionality.
+

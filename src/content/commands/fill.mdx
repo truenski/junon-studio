@@ -1,0 +1,47 @@
+---
+id: fill
+name: /fill
+description: Fill terrain or place buildings in a specified area.
+syntax:
+  - /fill [start_row] [start_col] [end_row] [end_col] [terrain_type] [color]
+  - /fill building [start_row] [start_col] [end_row] [end_col] [1x1 building] [color]
+category: with-args
+lang: en
+args:
+  - name: start_row
+    type: number
+    required: true
+    description: The starting row coordinate
+  - name: start_col
+    type: number
+    required: true
+    description: The starting column coordinate
+  - name: end_row
+    type: number
+    required: true
+    description: The ending row coordinate
+  - name: end_col
+    type: number
+    required: true
+    description: The ending column coordinate
+  - name: terrain_type
+    type: string
+    required: false
+    description: The type of terrain to fill
+  - name: building
+    type: string
+    required: false
+    description: The type of building to place (for building mode)
+  - name: color
+    type: string
+    required: false
+    description: The color to apply
+examples:
+  - code: /fill 0 0 10 10 grass
+    description: Fill area from (0,0) to (10,10) with grass
+  - code: /fill building 0 0 5 5 Wall
+    description: Fill area from (0,0) to (5,5) with Wall buildings
+---
+
+Fills a rectangular area with terrain or buildings. Can be used for terrain modification or building placement.
+

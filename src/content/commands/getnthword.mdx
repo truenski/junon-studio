@@ -1,0 +1,26 @@
+---
+id: getnthword
+name: /getnthword
+description: Extract the nth word from a sentence and store it in the $word variable.
+syntax:
+  - /getnthword [index] [message]
+category: with-args
+lang: en
+args:
+  - name: index
+    type: number
+    required: true
+    description: The word index (1-based)
+  - name: message
+    type: string
+    required: true
+    description: The message to extract from
+examples:
+  - code: '/getnthword 2 "a random message"'
+    description: Extracts "random" and stores it in $word variable
+  - code: '/getnthword 1 "hello world"'
+    description: Extracts "hello" and stores it in $word variable
+---
+
+Extracts a specific word from a message by index and stores it in the $word variable for use in subsequent commands.
+

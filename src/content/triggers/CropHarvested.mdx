@@ -1,0 +1,27 @@
+---
+id: CropHarvested
+name: CropHarvested
+description: Event triggered when a crop gets harvested
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: ID of crop
+  - name: entityType
+    type: string
+    description: Type of crop
+  - name: yieldType
+    type: string
+    description: Type of yield dropped
+  - name: player
+    type: string
+    description: Username of player who harvested crop
+examples:
+  - code: |
+      if CropHarvested
+        /chat $player "You harvested $cropType"
+    description: Track crop harvesting
+---
+
+Triggered when a player harvests a crop. Useful for farming systems, harvest tracking, or harvest rewards.
+

@@ -1,0 +1,24 @@
+---
+id: TeamMemberAdded
+name: TeamMemberAdded
+description: Event triggered when membed added to team
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The username of the added player
+  - name: team
+    type: string
+    description: The name of the team
+  - name: count
+    type: number
+    description: The number of members in the team
+examples:
+  - code: |
+      if TeamMemberAdded
+        /chat @a "$player joined $team (Total: $count)"
+    description: Announce when players join teams
+---
+
+Triggered when a player is added to a team. Useful for team announcements or team management.
+

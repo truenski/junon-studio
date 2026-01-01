@@ -1,0 +1,22 @@
+---
+id: PlayerRespawn
+name: PlayerRespawn
+description: Event triggered when player respawns.
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+examples:
+  - code: |
+      if PlayerRespawn
+        /give $player survival_tool 1
+        /chat $player "Welcome back!"
+    description: Give items and welcome message on respawn
+---
+
+Triggered when a player respawns. Useful for giving starter items, setting spawn effects, or tracking respawns.
+

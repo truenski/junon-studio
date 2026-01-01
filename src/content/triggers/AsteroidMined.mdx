@@ -1,0 +1,25 @@
+---
+id: AsteroidMined
+name: AsteroidMined
+description: Event triggered when an asteroid is mined.
+lang: en
+variables:
+  - name: type
+    type: string
+    description: Name of resource gained
+  - name: player
+    type: string
+    description: Name of player who mined resource
+  - name: remaining
+    type: number
+    description: Amount of resource remaining
+examples:
+  - code: |
+      if AsteroidMined
+        if $remaining <= 10
+          /chat $player "There are less than 10 resources remaining"
+    description: Alert player when asteroid is nearly depleted
+---
+
+Triggered when a player mines an asteroid. Useful for resource tracking, mining rewards, or depletion warnings.
+

@@ -1,0 +1,44 @@
+---
+id: kit
+name: /kit
+description: Create and manage item kits.
+syntax:
+  - /kit list
+  - /kit show [name]
+  - /kit create [name]
+  - /kit delete [name]
+  - /kit rename [name] [newname]
+  - /kit give [player] [name]
+  - /kit give [role] [name]
+category: with-args
+lang: en
+args:
+  - name: name
+    type: string
+    required: false
+    description: The name of the kit
+  - name: newname
+    type: string
+    required: false
+    description: The new name for the kit
+  - name: player
+    type: string
+    required: false
+    description: The username of the player
+  - name: role
+    type: string
+    required: false
+    description: The role name
+examples:
+  - code: /kit list
+    description: List all available kits
+  - code: /kit create starter
+    description: Create a new kit named "starter"
+  - code: /kit give PlayerName starter
+    description: Give the "starter" kit to PlayerName
+  - code: /kit give admin starter
+    description: Give the "starter" kit to all players with the "admin" role
+---
+
+Manages item kits that can be given to players. Kits are collections of items that can be distributed quickly.
+

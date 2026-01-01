@@ -1,0 +1,34 @@
+---
+id: PlayerAttacked
+name: PlayerAttacked
+description: Event triggered when a player gets damaged
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The damaged player's username
+  - name: playerRole
+    type: string
+    description: The damaged player's role
+  - name: attackingPlayer
+    type: string
+    description: The username of the player who attacked (if applicable)
+  - name: attackingPlayerRole
+    type: string
+    description: The role of the attacking player
+  - name: attackingMob
+    type: number
+    description: The ID of the mob that attacked (if applicable)
+  - name: damage
+    type: number
+    description: The amount of damage dealt
+examples:
+  - code: |
+      if PlayerAttacked
+        if $damage > 50
+          /chat $player "You took heavy damage!"
+    description: Alert player when taking significant damage
+---
+
+Triggered when a player is damaged by another player or a mob. Useful for damage tracking, PvP events, or health monitoring.
+

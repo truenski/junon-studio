@@ -1,0 +1,18 @@
+---
+id: Timer-RoundTimer-tick
+name: Timer:RoundTimer:tick
+description: Event triggered on each RoundTimer tick.
+lang: en
+variables:
+  - name: remaining
+    type: number
+    description: The remaining time in seconds
+examples:
+  - code: |
+      if Timer:RoundTimer:tick
+        /sidebar set 1 "Round ends in: $remaining"
+    description: Update round countdown
+---
+
+Triggered every second while the RoundTimer is running. Useful for round countdown displays.
+

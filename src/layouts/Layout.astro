@@ -1,0 +1,86 @@
+---
+import { ToastProviders } from "@/components/ToastProviders";
+import combatArmorIcon from "@/assets/combat_armor.png";
+import "../index.css";
+
+interface Props {
+  title?: string;
+  currentPage?: "editor" | "docs" | "snippets";
+}
+
+const { title = "JUNON Code", currentPage = "editor" } = Astro.props;
+
+const tabs = [
+  { id: "editor", label: "Editor", href: "/" },
+  { id: "docs", label: "Documentation", href: "/docs" },
+  { id: "snippets", label: "Snippets", href: "/snippets" },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/combat_armor.png" />
+    <title>{title}</title>
+    <meta name="description" content="JUNON Code Builder" />
+  </head>
+  <body class="h-screen flex flex-col overflow-hidden">
+    <ToastProviders client:load>
+      <div class="h-screen flex flex-col overflow-hidden">
+        <!-- Top Navigation -->
+        <header class="h-14 border-b border-border/50 glass-panel flex items-center justify-between px-4">
+          <!-- Logo -->
+          <div class="flex items-center gap-3">
+            <img 
+              src={combatArmorIcon.src} 
+              alt="JUNON" 
+              class="w-8 h-8"
+            />
+            <div>
+              <h1 class="text-lg font-display text-primary neon-glow leading-none">
+                JUNON
+              </h1>
+              <p class="text-[10px] text-muted-foreground font-ui uppercase tracking-widest">Code</p>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <nav class="flex items-center gap-1">
+            {tabs.map((tab) => (
+              <a
+                href={tab.href}
+                class={`flex items-center gap-2 px-4 py-2 rounded-lg font-ui text-sm transition-all ${
+                  currentPage === tab.id
+                    ? "bg-primary/10 text-primary neon-border"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                }`}
+              >
+                <span class="hidden sm:inline">{tab.label}</span>
+              </a>
+            ))}
+          </nav>
+
+          <!-- Actions -->
+          <div class="flex items-center gap-2">
+            <a
+              href="https://junon.io"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <span class="hidden sm:inline">junon.io</span>
+            </a>
+          </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex overflow-hidden">
+          <slot />
+        </main>
+      </div>
+    </ToastProviders>
+  </body>
+</html>
+

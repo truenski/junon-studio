@@ -1,0 +1,31 @@
+---
+id: RegionLeave
+name: RegionLeave
+description: Event triggered when entity leaves a region
+lang: en
+variables:
+  - name: region
+    type: string
+    description: Name of region
+  - name: player
+    type: string
+    description: Username of player who left
+  - name: playerRole
+    type: string
+    description: Role of player who left
+  - name: entityId
+    type: number
+    description: ID of entity who left
+  - name: entityType
+    type: string
+    description: Type of mob who entered
+examples:
+  - code: |
+      if RegionLeave
+        if $region == "spawn"
+          /chat $player "You left spawn"
+    description: Notify when leaving specific regions
+---
+
+Triggered when a player or mob leaves a region. Useful for area-based events or region exit mechanics.
+

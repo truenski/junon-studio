@@ -1,0 +1,23 @@
+---
+id: blood
+name: /blood
+description: Add or remove blood from an entity.
+syntax:
+  - /blood add [entity_id]
+  - /blood decrease [entity_id]
+category: with-args
+lang: en
+args:
+  - name: entity_id
+    type: number
+    required: true
+    description: The entity ID
+examples:
+  - code: /blood add 1234
+    description: Add blood to entity 1234
+  - code: /blood decrease 1234
+    description: Decrease blood amount on entity 1234
+---
+
+Manages blood on entities. Blood can appear on entities after combat or damage.
+

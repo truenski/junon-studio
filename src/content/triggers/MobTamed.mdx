@@ -1,0 +1,28 @@
+---
+id: MobTamed
+name: MobTamed
+description: Event triggered when a mob is tamed.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the mob
+  - name: entityType
+    type: string
+    description: The type of mob
+  - name: playerId
+    type: number
+    description: The ID of the player who tamed the mob
+  - name: player
+    type: string
+    description: The username of the player who tamed the mob
+examples:
+  - code: |
+      if MobTamed
+        /chat @a "$player tamed a $entityType!"
+        /gold gain $player 50
+    description: Announce taming and reward player
+---
+
+Triggered when a player successfully tames a mob (done by feeding the mob multiple times). Useful for taming rewards or announcements.
+

@@ -1,0 +1,21 @@
+---
+id: ItemCrafted
+name: ItemCrafted
+description: Event triggered when item crafted
+lang: en
+variables:
+  - name: type
+    type: string
+    description: Name of item crafted
+  - name: player
+    type: string
+    description: Name of player who crafted item
+examples:
+  - code: |
+      if ItemCrafted
+        /chat $player "You crafted a $itemType!"
+    description: Notify player when they craft items
+---
+
+Triggered when a player crafts an item. Useful for crafting achievements, rewards, or tracking.
+

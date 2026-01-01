@@ -1,0 +1,27 @@
+---
+id: CorpseDragged
+name: CorpseDragged
+description: Event triggered when corpse dragged
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: ID of user who dragged
+  - name: player
+    type: string
+    description: Username of player
+  - name: corpseType
+    type: string
+    description: Type of corpse
+  - name: corpseId
+    type: number
+    description: ID of corpse
+examples:
+  - code: |
+      if CorpseDragged
+        /chat $player "You are dragging a $corpseType"
+    description: Track corpse dragging
+---
+
+Triggered when a player drags a corpse. Useful for corpse management or dragging mechanics.
+

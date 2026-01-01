@@ -1,0 +1,26 @@
+---
+id: setting
+name: /setting
+description: Modify server settings.
+syntax:
+  - /setting [key] [value]
+category: with-args
+lang: en
+args:
+  - name: key
+    type: string
+    required: true
+    description: The setting key
+  - name: value
+    type: string|boolean|number
+    required: true
+    description: The setting value
+examples:
+  - code: /setting isChatEnabled false
+    description: Disable chat
+  - code: /setting maxPlayers 50
+    description: Set maximum players to 50
+---
+
+Modifies server settings. Various game settings can be changed dynamically.
+

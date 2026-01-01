@@ -1,0 +1,24 @@
+---
+id: TeamMemberRemoved
+name: TeamMemberRemoved
+description: Event triggered when membed removed from team
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The username of the removed player
+  - name: team
+    type: string
+    description: The name of the team
+  - name: count
+    type: number
+    description: The number of members remaining in the team
+examples:
+  - code: |
+      if TeamMemberRemoved
+        /chat @a "$player left $team (Remaining: $count)"
+    description: Announce when players leave teams
+---
+
+Triggered when a player is removed from a team. Useful for team management or announcements.
+

@@ -1,0 +1,65 @@
+---
+id: region
+name: /region
+description: Manage regions in the game world.
+syntax:
+  - /region display
+  - /region list
+  - /region set [name] [start_row] [start_col] [end_row] [end_col]
+  - /region delete [name]
+  - /region rename [name] [newname]
+  - /region flag [name] [key] [value]
+  - /region flag [name] [build] [everyone | role | playername]
+  - /region setowner [name] [team]
+category: with-args
+lang: en
+args:
+  - name: name
+    type: string
+    required: false
+    description: The name of the region
+  - name: newname
+    type: string
+    required: false
+    description: The new name for the region
+  - name: start_row
+    type: number
+    required: false
+    description: The starting row coordinate
+  - name: start_col
+    type: number
+    required: false
+    description: The starting column coordinate
+  - name: end_row
+    type: number
+    required: false
+    description: The ending row coordinate
+  - name: end_col
+    type: number
+    required: false
+    description: The ending column coordinate
+  - name: key
+    type: string
+    required: false
+    description: The flag key (build, pvp, map_label, restrict, priority)
+  - name: value
+    type: string
+    required: false
+    description: The flag value
+  - name: team
+    type: string
+    required: false
+    description: The team name
+examples:
+  - code: /region set spawn 0 0 100 100
+    description: Create a region named "spawn" from (0,0) to (100,100)
+  - code: /region flag spawn build everyone
+    description: Allow everyone to build in the spawn region
+  - code: /region flag spawn pvp false
+    description: Disable PvP in the spawn region
+  - code: /region setowner spawn BlueTeam
+    description: Set BlueTeam as the owner of the spawn region
+---
+
+Manages regions with various flags and permissions. Regions can control building, PvP, map labels, restrictions, and priorities.
+

@@ -1,0 +1,26 @@
+---
+id: scene
+name: /scene
+description: Play specific scenes with camera control.
+syntax:
+  - /scene play [sceneName] camera:[entityid]
+category: with-args
+lang: en
+args:
+  - name: sceneName
+    type: string
+    required: true
+    description: The name of the scene to play
+  - name: entityid
+    type: number
+    required: false
+    description: The entity ID to focus the camera on
+examples:
+  - code: /scene play intro camera:1234
+    description: Play the "intro" scene with camera focused on entity 1234
+  - code: /scene play outro
+    description: Play the "outro" scene
+---
+
+Plays cinematic scenes with optional camera control. Useful for cutscenes and special events.
+

@@ -1,0 +1,30 @@
+---
+id: score
+name: /score
+description: Manage player scores.
+syntax:
+  - /score set [player] [amount]
+  - /score gain [player] [amount]
+  - /score lose [player] [amount]
+category: with-args
+lang: en
+args:
+  - name: player
+    type: string
+    required: true
+    description: The username of the player
+  - name: amount
+    type: number
+    required: true
+    description: The score amount
+examples:
+  - code: /score set PlayerName 100
+    description: Set PlayerName's score to 100
+  - code: /score gain PlayerName 10
+    description: Add 10 to PlayerName's score
+  - code: /score lose PlayerName 5
+    description: Subtract 5 from PlayerName's score
+---
+
+Manages player scores. Can set, add, or subtract scores from players.
+

@@ -1,0 +1,24 @@
+---
+id: setowner
+name: /setowner
+description: Set the owner of a building.
+syntax:
+  - /setowner [entity_id] [team]
+category: with-args
+lang: en
+args:
+  - name: entity_id
+    type: number
+    required: true
+    description: The building entity ID
+  - name: team
+    type: string
+    required: true
+    description: The team name
+examples:
+  - code: /setowner 1234 BlueTeam
+    description: Set BlueTeam as the owner of building 1234
+---
+
+Sets the team owner of a building. Ownership affects permissions and access.
+

@@ -1,0 +1,28 @@
+---
+id: spawncorpse
+name: /spawncorpse
+description: Spawn a corpse entity.
+syntax:
+  - /spawncorpse [type] [row] [col]
+category: with-args
+lang: en
+args:
+  - name: type
+    type: string
+    required: true
+    description: The type of corpse to spawn
+  - name: row
+    type: number
+    required: true
+    description: The row coordinate
+  - name: col
+    type: number
+    required: true
+    description: The column coordinate
+examples:
+  - code: /spawncorpse Human 50 50
+    description: Spawn a Human corpse at coordinates (50, 50)
+---
+
+Creates corpse entities at specified locations. Corpses can be butchered for resources.
+

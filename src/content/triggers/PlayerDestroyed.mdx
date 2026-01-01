@@ -1,0 +1,32 @@
+---
+id: PlayerDestroyed
+name: PlayerDestroyed
+description: Event triggered when a player dies.
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The dead player's username
+  - name: playerRole
+    type: string
+    description: The dead player's role
+  - name: killingPlayer
+    type: string
+    description: The username of the player who killed (if applicable)
+  - name: killingPlayerRole
+    type: string
+    description: The role of the killing player
+  - name: killingMob
+    type: number
+    description: The ID of the mob that killed (if applicable)
+examples:
+  - code: |
+      if PlayerDestroyed
+        /chat @a "$player was killed!"
+        if $killingPlayer != ""
+          /chat @a "Killed by $killingPlayer"
+    description: Announce player death and killer
+---
+
+Triggered when a player is killed by another player or a mob. Useful for death announcements, respawn handling, or kill tracking.
+

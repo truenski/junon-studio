@@ -1,0 +1,22 @@
+---
+id: PlayerJoined
+name: PlayerJoined
+description: Event triggered when a player joins a game.
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The username of the player who joined
+  - name: playerRole
+    type: string
+    description: The role of the player who joined
+examples:
+  - code: |
+      if PlayerJoined
+        /chat @a "$player joined the server!"
+        /give $player survival_tool 1
+    description: Welcome message and give starter item when player joins
+---
+
+Triggered when a player enters a server. Useful for welcome messages, giving starter items, or tracking player activity.
+

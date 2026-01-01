@@ -1,0 +1,26 @@
+---
+id: sidebar
+name: /sidebar
+description: Display text and scoreboard in the sidebar.
+syntax:
+  - /sidebar set [line] [text]
+category: with-args
+lang: en
+args:
+  - name: line
+    type: number
+    required: true
+    description: The line number (1-15)
+  - name: text
+    type: string
+    required: true
+    description: The text to display (can include variables like $remaining)
+examples:
+  - code: '/sidebar set 1 "Round Starts In $remaining"'
+    description: Display "Round Starts In [time]" on sidebar line 1
+  - code: '/sidebar set 2 "Players: $playerCount"'
+    description: Display player count on sidebar line 2
+---
+
+Manages the sidebar display. Can show text, scores, and dynamic variables. Useful for displaying game information to players.
+

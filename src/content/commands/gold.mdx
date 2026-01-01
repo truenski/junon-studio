@@ -1,0 +1,30 @@
+---
+id: gold
+name: /gold
+description: Manage player gold amounts.
+syntax:
+  - /gold set [player] [amount]
+  - /gold gain [player] [amount]
+  - /gold lose [player] [amount]
+category: with-args
+lang: en
+args:
+  - name: player
+    type: string
+    required: true
+    description: The username of the player
+  - name: amount
+    type: number
+    required: true
+    description: The gold amount
+examples:
+  - code: /gold set PlayerName 1000
+    description: Set PlayerName's gold to 1000
+  - code: /gold gain PlayerName 100
+    description: Add 100 gold to PlayerName
+  - code: /gold lose PlayerName 50
+    description: Remove 50 gold from PlayerName
+---
+
+Manages player gold. Can set, add, or subtract gold from players.
+

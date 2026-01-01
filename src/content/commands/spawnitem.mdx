@@ -1,0 +1,35 @@
+---
+id: spawnitem
+name: /spawnitem
+description: Create and spawn an item.
+syntax:
+  - /spawnitem [type] [count]
+  - /spawnitem [type] [count] [row] [col]
+category: with-args
+lang: en
+args:
+  - name: type
+    type: string
+    required: true
+    description: The type of item to spawn
+  - name: count
+    type: number
+    required: true
+    description: The number of items to spawn
+  - name: row
+    type: number
+    required: false
+    description: The row coordinate where to spawn the item
+  - name: col
+    type: number
+    required: false
+    description: The column coordinate where to spawn the item
+examples:
+  - code: /spawnitem survival_tool 1
+    description: Spawn one survival tool at your current location
+  - code: /spawnitem copper_ore 10 50 50
+    description: Spawn 10 copper ore items at coordinates (50, 50)
+---
+
+Creates and spawns items in the game world. If coordinates are not specified, items spawn at the player's current location.
+

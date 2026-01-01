@@ -1,0 +1,25 @@
+---
+id: PlayerKeyboard
+name: PlayerKeyboard
+description: Event triggered when player presses a key.
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+  - name: key
+    type: string
+    description: The key that was pressed
+examples:
+  - code: |
+      if PlayerKeyboard
+        if $key == "E"
+          /chat $player "You pressed E!"
+    description: Detect specific key presses
+---
+
+Triggered when a player presses a key on their keyboard. Useful for custom key bindings or interactive elements.
+

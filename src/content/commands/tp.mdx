@@ -1,0 +1,40 @@
+---
+id: tp
+name: /tp
+description: Teleport an entity to a location or another entity.
+syntax:
+  - /tp [name]
+  - /tp [row] [col]
+  - /tp [name] [row] [col]
+  - /tp [name] [name]
+  - /tp [name] !randomland
+category: with-args
+lang: en
+args:
+  - name: name
+    type: string
+    required: false
+    description: The username or entity name
+  - name: row
+    type: number
+    required: false
+    description: The row coordinate
+  - name: col
+    type: number
+    required: false
+    description: The column coordinate
+examples:
+  - code: /tp PlayerName
+    description: Teleport yourself to PlayerName
+  - code: /tp 50 50
+    description: Teleport yourself to coordinates (50, 50)
+  - code: /tp PlayerName 100 100
+    description: Teleport PlayerName to coordinates (100, 100)
+  - code: /tp Player1 Player2
+    description: Teleport Player1 to Player2's location
+  - code: /tp PlayerName !randomland
+    description: Teleport PlayerName to a random land location
+---
+
+Teleports entities to specified coordinates or to another entity's location. Can also teleport to random land locations.
+

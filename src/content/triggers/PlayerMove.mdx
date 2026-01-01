@@ -1,0 +1,25 @@
+---
+id: PlayerMove
+name: PlayerMove
+description: Event triggered when player changes position.
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The username of the player
+  - name: row
+    type: number
+    description: The row coordinate the player moved to
+  - name: col
+    type: number
+    description: The column position of player
+examples:
+  - code: |
+      if PlayerMove
+        if $row == 50 && $col == 50
+          /chat $player "You reached the center!"
+    description: Trigger event when player reaches specific coordinates
+---
+
+Triggered when a player moves to a new position. Useful for location-based events, checkpoints, or area triggers.
+

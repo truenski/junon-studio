@@ -1,0 +1,31 @@
+---
+id: timer
+name: /timer
+description: Manage timers for events and countdowns.
+syntax:
+  - /timer [name] [duration]
+  - /timer [name] start
+  - /timer [name] stop
+  - /timer [name] reset
+category: with-args
+lang: en
+args:
+  - name: name
+    type: string
+    required: true
+    description: The name of the timer
+  - name: duration
+    type: number
+    required: false
+    description: The duration in seconds
+examples:
+  - code: /timer RoundTimer 300
+    description: Create a timer named "RoundTimer" with 300 seconds duration
+  - code: /timer RoundTimer start
+    description: Start the RoundTimer
+  - code: /timer RoundTimer stop
+    description: Stop the RoundTimer
+---
+
+Manages timers that can be used for events, countdowns, and game mechanics. Timers can trigger events when they start, tick, or end.
+

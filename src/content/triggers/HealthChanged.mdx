@@ -1,0 +1,37 @@
+---
+id: HealthChanged
+name: HealthChanged
+description: Event triggered when entity health changed
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: ID of entity
+  - name: entityType
+    type: string
+    description: Type of entity
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: previous
+    type: number
+    description: Previous value
+  - name: current
+    type: number
+    description: Current value
+  - name: delta
+    type: number
+    description: Amount changed
+examples:
+  - code: |
+      if HealthChanged
+        if $current <= 20
+          /chat $player "Low health warning!"
+    description: Alert player when health is low
+---
+
+Triggered when a player's health level changes. Useful for health monitoring, low health warnings, or health-based events.
+

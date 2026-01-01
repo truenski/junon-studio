@@ -1,0 +1,19 @@
+---
+id: ColonyUnlike
+name: ColonyUnlike
+description: Event triggered when player unlikes colony
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The username of the player who unliked
+examples:
+  - code: |
+      if ColonyUnlike
+        if $player != "PlayerOwner"
+          /chat @a "$player unliked the game to get this humiliating message"
+    description: Announce when players unlike the colony
+---
+
+Triggered when a player unlikes a colony. Useful for feedback systems or colony management.
+

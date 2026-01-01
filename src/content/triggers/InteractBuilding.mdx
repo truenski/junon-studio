@@ -1,0 +1,28 @@
+---
+id: InteractBuilding
+name: InteractBuilding
+description: Event triggered when player interacts with building
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: ID of building
+  - name: entityType
+    type: string
+    description: Type of building
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player who interacted
+examples:
+  - code: |
+      if InteractBuilding
+        if $entityType == "TradingTable"
+          /chat $player "You opened the trading table"
+    description: Handle building interactions
+---
+
+Triggered when a player interacts with a building. Useful for custom building behaviors or interaction systems.
+

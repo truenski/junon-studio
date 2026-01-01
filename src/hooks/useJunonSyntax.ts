@@ -1,37 +1,45 @@
 // Junon syntax definitions and validation
+import { getCommandNames, getTriggerNames, type MDXCommand, type MDXTrigger } from '@/lib/mdxLoader';
 
-export const TRIGGER_EVENTS = [
-  'onPlayerJoin',
-  'onPlayerLeave', 
-  'onPlayerDeath',
-  'onPlayerRespawn',
-  'onPlayerChat',
-  'onEntitySpawn',
-  'onEntityDeath',
-  'onItemPickup',
-  'onItemDrop',
-  'onGameStart',
-  'onGameEnd',
-  'onRoundStart',
-  'onRoundEnd',
-] as const;
+// These will be populated dynamically from MDX data
+export let TRIGGER_EVENTS: readonly string[] = [] as const;
+export let COMMANDS: readonly string[] = [] as const;
 
-export const COMMANDS = [
-  '/chat',
-  '/time',
-  '/weather',
-  '/give',
-  '/teleport',
-  '/heal',
-  '/kill',
-  '/spawn',
-  '/despawn',
-  '/effect',
-  '/clear',
-  '/setblock',
-  '/fill',
-  '/summon',
-] as const;
+// MDX data cache
+let mdxCommands: MDXCommand[] = [];
+let mdxTriggers: MDXTrigger[] = [];
+
+// Initialize MDX data (call this from CodeEditor on mount)
+export async function initializeMDXData() {
+  try {
+    const [commandNames, triggerNames, { getCommands, getTriggers }] = await Promise.all([
+      getCommandNames(),
+      getTriggerNames(),
+      import('@/lib/mdxLoader'),
+    ]);
+    
+    TRIGGER_EVENTS = triggerNames as any;
+    COMMANDS = commandNames as any;
+    mdxCommands = await getCommands();
+    mdxTriggers = await getTriggers();
+  } catch (error) {
+    console.error('Failed to initialize MDX data:', error);
+    // Fallback to default values
+    TRIGGER_EVENTS = [
+      'onPlayerJoin',
+      'onPlayerLeave', 
+      'onPlayerDeath',
+      'onPlayerRespawn',
+      'onPlayerChat',
+    ] as const;
+    COMMANDS = [
+      '/chat',
+      '/give',
+      '/heal',
+      '/kill',
+    ] as const;
+  }
+}
 
 export const CONDITIONS = [
   'player.health',
@@ -48,8 +56,8 @@ export const CONDITIONS = [
 
 export const OPERATORS = ['==', '!='] as const;
 
-export type TriggerEvent = typeof TRIGGER_EVENTS[number];
-export type Command = typeof COMMANDS[number];
+export type TriggerEvent = string;
+export type Command = string;
 export type Condition = typeof CONDITIONS[number];
 export type Operator = typeof OPERATORS[number];
 
@@ -114,7 +122,7 @@ export function validateJunonCode(code: string): ValidationError[] {
       const match = trimmed.match(/@trigger\s+(\w+)/);
       if (match) {
         const eventName = match[1];
-        if (!TRIGGER_EVENTS.includes(eventName as TriggerEvent)) {
+        if (TRIGGER_EVENTS.length > 0 && !TRIGGER_EVENTS.includes(eventName)) {
           const triggerStart = trimmed.indexOf('@trigger');
           const eventStart = trimmed.indexOf(eventName, triggerStart + 8);
           errors.push({
@@ -220,8 +228,8 @@ export function validateJunonCode(code: string): ValidationError[] {
     
     // Check for standalone commands not in proper context
     if (trimmed.startsWith('/') && inTrigger) {
-      const validCommand = COMMANDS.some(cmd => trimmed.startsWith(cmd));
-      if (!validCommand) {
+      const validCommand = COMMANDS.length === 0 || COMMANDS.some(cmd => trimmed.startsWith(cmd));
+      if (!validCommand && COMMANDS.length > 0) {
         const cmdMatch = trimmed.match(/^(\/\w+)/);
         if (cmdMatch) {
           errors.push({
@@ -420,6 +428,24 @@ export function getSuggestionContext(code: string, cursorPosition: number): Sugg
   }
   
   return { type: 'none', suggestions: [] };
+}
+
+// Get command examples from MDX
+export function getCommandExample(commandName: string): string | null {
+  const command = mdxCommands.find(cmd => cmd.name === commandName);
+  if (command && command.examples && command.examples.length > 0) {
+    return command.examples[0].code;
+  }
+  return null;
+}
+
+// Get trigger example from MDX
+export function getTriggerExample(triggerName: string): string | null {
+  const trigger = mdxTriggers.find(trg => trg.name === triggerName);
+  if (trigger && trigger.examples && trigger.examples.length > 0) {
+    return trigger.examples[0].code;
+  }
+  return null;
 }
 
 export function getAutoIndent(code: string, cursorPosition: number): string {

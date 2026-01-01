@@ -1,0 +1,27 @@
+---
+id: ItemPickup
+name: ItemPickup
+description: Event triggered when player picks up item
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: itemType
+    type: string
+    description: Name of item
+  - name: count
+    type: number
+    description: Count of item
+examples:
+  - code: |
+      if ItemPickup
+        /chat $player "You picked up $itemType"
+    description: Track item pickups
+---
+
+Triggered when a player picks up an item. Useful for pickup tracking, item collection, or pickup rewards.
+

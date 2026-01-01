@@ -1,0 +1,27 @@
+---
+id: MobFollow
+name: MobFollow
+description: Event triggered when a mob starts following a player.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the mob
+  - name: entityType
+    type: string
+    description: The type of mob
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+examples:
+  - code: |
+      if MobFollow
+        /chat $player "A $entityType is now following you!"
+    description: Notify player when mob starts following
+---
+
+Triggered when a mob begins to follow a player. Useful for pet systems or follower mechanics.
+

@@ -1,0 +1,25 @@
+---
+id: CorpseButchered
+name: CorpseButchered
+description: Event triggered when corpse butchered
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: ID of user who butchered
+  - name: player
+    type: string
+    description: Username of player
+  - name: corpseType
+    type: string
+    description: Type of corpse
+examples:
+  - code: |
+      if CorpseButchered
+        if $corpseType == "Human"
+          /chat @a "$player chopped a human"
+    description: Track corpse butchering
+---
+
+Triggered when a corpse is butchered. Can be used for players and slaves. Useful for resource gathering or butchering systems.
+

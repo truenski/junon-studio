@@ -1,0 +1,273 @@
+---
+import { getCollection } from "astro:content";
+
+const commands = await getCollection("commands");
+const triggers = await getCollection("triggers");
+const actions = await getCollection("actions");
+const functions = await getCollection("functions");
+const variables = await getCollection("variables");
+const mobs = await getCollection("mobs");
+const entities = await getCollection("entities");
+
+const currentPath = Astro.url.pathname;
+---
+
+<aside class="bg-black border-b border-white/10 p-4 flex-shrink-0">
+  <nav class="space-y-2">
+    <a 
+      href="/docs" 
+      class={`block px-3 py-2 rounded hover:bg-white/5 ${currentPath === "/docs" ? "bg-white/10" : ""}`}
+    >
+      Documentation
+    </a>
+    
+    <div class="pt-2">
+      <div class="text-xs uppercase text-white/50 px-3 py-1">Commands</div>
+      <div class="space-y-1">
+        {commands.slice(0, 10).map((cmd) => (
+          <button
+            type="button"
+            data-nav-item="command"
+            data-nav-id={cmd.id}
+            class={`block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 transition-colors ${currentPath.includes(`/commands/${cmd.id}`) ? "bg-white/10" : ""}`}
+          >
+            {cmd.data.name}
+          </button>
+        ))}
+        {commands.length > 10 && (
+          <button
+            type="button"
+            data-nav-filter="command"
+            class="block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 text-white/70 transition-colors"
+          >
+            View all ({commands.length})
+          </button>
+        )}
+      </div>
+    </div>
+
+    <div class="pt-2">
+      <div class="text-xs uppercase text-white/50 px-3 py-1">Triggers</div>
+      <div class="space-y-1">
+        {triggers.slice(0, 10).map((trigger) => (
+          <button
+            type="button"
+            data-nav-item="trigger"
+            data-nav-id={trigger.id}
+            class={`block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 transition-colors ${currentPath.includes(`/triggers/${trigger.id}`) ? "bg-white/10" : ""}`}
+          >
+            {trigger.data.name}
+          </button>
+        ))}
+        {triggers.length > 10 && (
+          <button
+            type="button"
+            data-nav-filter="trigger"
+            class="block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 text-white/70 transition-colors"
+          >
+            View all ({triggers.length})
+          </button>
+        )}
+      </div>
+    </div>
+
+    <div class="pt-2">
+      <div class="text-xs uppercase text-white/50 px-3 py-1">Actions</div>
+      <div class="space-y-1">
+        {actions.slice(0, 5).map((action) => (
+          <button
+            type="button"
+            data-nav-item="action"
+            data-nav-id={action.id}
+            class={`block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 transition-colors ${currentPath.includes(`/actions/${action.id}`) ? "bg-white/10" : ""}`}
+          >
+            {action.data.name}
+          </button>
+        ))}
+        {actions.length > 5 && (
+          <button
+            type="button"
+            data-nav-filter="action"
+            class="block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 text-white/70 transition-colors"
+          >
+            View all ({actions.length})
+          </button>
+        )}
+      </div>
+    </div>
+
+    <div class="pt-2">
+      <div class="text-xs uppercase text-white/50 px-3 py-1">Functions</div>
+      <div class="space-y-1">
+        {functions.slice(0, 5).map((func) => (
+          <button
+            type="button"
+            data-nav-item="function"
+            data-nav-id={func.id}
+            class={`block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 transition-colors ${currentPath.includes(`/functions/${func.id}`) ? "bg-white/10" : ""}`}
+          >
+            {func.data.name}
+          </button>
+        ))}
+        {functions.length > 5 && (
+          <button
+            type="button"
+            data-nav-filter="function"
+            class="block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 text-white/70 transition-colors"
+          >
+            View all ({functions.length})
+          </button>
+        )}
+      </div>
+    </div>
+
+    <div class="pt-2">
+      <div class="text-xs uppercase text-white/50 px-3 py-1">Variables</div>
+      <div class="space-y-1">
+        {variables.slice(0, 5).map((variable) => (
+          <button
+            type="button"
+            data-nav-item="variable"
+            data-nav-id={variable.id}
+            class={`block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 transition-colors ${currentPath.includes(`/variables/${variable.id}`) ? "bg-white/10" : ""}`}
+          >
+            {variable.data.name}
+          </button>
+        ))}
+        {variables.length > 5 && (
+          <button
+            type="button"
+            data-nav-filter="variable"
+            class="block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 text-white/70 transition-colors"
+          >
+            View all ({variables.length})
+          </button>
+        )}
+      </div>
+    </div>
+
+    <div class="pt-2">
+      <div class="text-xs uppercase text-white/50 px-3 py-1">Mobs</div>
+      <div class="space-y-1">
+        {mobs.slice(0, 5).map((mob) => (
+          <button
+            type="button"
+            data-nav-item="mob"
+            data-nav-id={mob.id}
+            class={`block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 transition-colors ${currentPath.includes(`/mobs/${mob.id}`) ? "bg-white/10" : ""}`}
+          >
+            {mob.data.name}
+          </button>
+        ))}
+        {mobs.length > 5 && (
+          <button
+            type="button"
+            data-nav-filter="mob"
+            class="block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 text-white/70 transition-colors"
+          >
+            View all ({mobs.length})
+          </button>
+        )}
+      </div>
+    </div>
+
+    <div class="pt-2">
+      <div class="text-xs uppercase text-white/50 px-3 py-1">Entities</div>
+      <div class="space-y-1">
+        {entities.slice(0, 5).map((entity) => (
+          <button
+            type="button"
+            data-nav-item="entity"
+            data-nav-id={entity.id}
+            class={`block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 transition-colors ${currentPath.includes(`/entities/${entity.id}`) ? "bg-white/10" : ""}`}
+          >
+            {entity.data.name}
+          </button>
+        ))}
+        {entities.length > 5 && (
+          <button
+            type="button"
+            data-nav-filter="entity"
+            class="block w-full text-left px-3 py-1 text-sm rounded hover:bg-white/5 text-white/70 transition-colors"
+          >
+            View all ({entities.length})
+          </button>
+        )}
+      </div>
+    </div>
+  </nav>
+</aside>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // Handle navigation to specific items
+    const navItems = document.querySelectorAll("[data-nav-item]");
+    navItems.forEach((button) => {
+      button.addEventListener("click", () => {
+        const type = button.getAttribute("data-nav-item");
+        const id = button.getAttribute("data-nav-id");
+        
+        if (!type || !id) return;
+        
+        // Navigate to /docs if not already there
+        if (window.location.pathname !== "/docs") {
+          window.location.href = `/docs#${type}-${id}`;
+        } else {
+          // Already on /docs, just update hash and scroll
+          window.location.hash = `${type}-${id}`;
+          
+          // Scroll and open accordion
+          setTimeout(() => {
+            const targetItem = document.querySelector(`#accordion-${type}-${id}`) as HTMLElement;
+            if (targetItem) {
+              // Ensure visible
+              targetItem.classList.remove("hidden");
+              targetItem.style.display = "block";
+              
+              // Scroll to item
+              targetItem.scrollIntoView({ behavior: "smooth", block: "start" });
+              
+              // Open accordion
+              setTimeout(() => {
+                if ((window as any).toggleAccordion) {
+                  (window as any).toggleAccordion(id, true);
+                }
+              }, 100);
+            }
+          }, 100);
+        }
+      });
+    });
+    
+    // Handle filter buttons (View all)
+    const filterButtons = document.querySelectorAll("[data-nav-filter]");
+    filterButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        const type = button.getAttribute("data-nav-filter");
+        
+        if (!type) return;
+        
+        // Navigate to /docs if not already there
+        if (window.location.pathname !== "/docs") {
+          window.location.href = "/docs";
+        }
+        
+        // Check the filter checkbox for this type
+        setTimeout(() => {
+          const checkbox = document.querySelector(`.filter-checkbox[data-category="${type}"]`) as HTMLInputElement;
+          if (checkbox) {
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event("change"));
+          }
+          
+          // Scroll to top of items
+          const itemsContainer = document.getElementById("items-container");
+          if (itemsContainer) {
+            itemsContainer.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 100);
+      });
+    });
+  });
+</script>
+

@@ -1,0 +1,30 @@
+---
+id: setequipment
+name: /setequipment
+description: Set equipment (armor or hand item) of a player.
+syntax:
+  - /setequipment [armor|hand] [username] [type]
+category: with-args
+lang: en
+args:
+  - name: armor|hand
+    type: string
+    required: true
+    description: Either "armor" for spacesuit or "hand" for hand item
+  - name: username
+    type: string
+    required: true
+    description: The username of the player
+  - name: type
+    type: string
+    required: true
+    description: The type of equipment to set
+examples:
+  - code: /setequipment armor PlayerName spacesuit_red
+    description: Set PlayerName's spacesuit to red
+  - code: /setequipment hand PlayerName survival_tool
+    description: Set PlayerName's hand item to survival_tool
+---
+
+Sets player equipment. Can modify spacesuit (armor) or hand-held items.
+

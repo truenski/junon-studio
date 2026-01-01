@@ -1,0 +1,24 @@
+---
+id: ItemConsumed
+name: ItemConsumed
+description: Event triggered when player consumes item
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: itemType
+    type: string
+    description: Name of item
+examples:
+  - code: |
+      if ItemConsumed
+        /chat $player "You consumed $itemType"
+    description: Track item consumption
+---
+
+Triggered when a player consumes an item. Useful for food systems, consumption tracking, or consumption effects.
+

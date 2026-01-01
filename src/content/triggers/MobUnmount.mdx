@@ -1,0 +1,27 @@
+---
+id: MobUnmount
+name: MobUnmount
+description: Event triggered when a player unmounts a mob.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the mob
+  - name: entityType
+    type: string
+    description: The type of mob
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+examples:
+  - code: |
+      if MobUnmount
+        /chat $player "You dismounted from the $entityType"
+    description: Notify player when they unmount
+---
+
+Triggered when a player unmounts a mob. Useful for mount systems or dismount events.
+

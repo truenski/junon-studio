@@ -1,0 +1,80 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { CodeEditor } from "@/components/CodeEditor";
+import { CollapsiblePanelClient } from "@/components/CollapsiblePanelClient";
+
+const quickDocs = [
+  { name: "@trigger", desc: "Event handlers" },
+  { name: "@command", desc: "Custom commands" },
+  { name: "@event", desc: "Game events" },
+  { name: "sendMessage()", desc: "Send chat message" },
+  { name: "giveItem()", desc: "Give item to player" },
+  { name: "teleport()", desc: "Move player" },
+];
+
+const quickSnippets = [
+  { name: "Spawn System", lines: 12 },
+  { name: "Kill Streak", lines: 18 },
+  { name: "Safe Zones", lines: 14 },
+];
+---
+
+<Layout title="JUNON Code - Editor" currentPage="editor">
+  <!-- Left Collapsible Panel - Quick Docs -->
+  <CollapsiblePanelClient
+    title="Quick Docs"
+    side="left"
+    client:load
+  >
+    <div class="space-y-2">
+      {quickDocs.map((doc) => (
+        <div
+          class="p-2 rounded bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors group"
+        >
+          <span class="text-xs font-mono text-primary group-hover:neon-glow">
+            {doc.name}
+          </span>
+          <p class="text-[10px] text-muted-foreground mt-0.5">{doc.desc}</p>
+        </div>
+      ))}
+      <a
+        href="/docs"
+        class="block w-full text-xs text-center py-2 text-muted-foreground hover:text-primary transition-colors"
+      >
+        View all docs →
+      </a>
+    </div>
+  </CollapsiblePanelClient>
+
+  <!-- Code Editor -->
+  <div class="flex-1 overflow-hidden">
+    <CodeEditor client:load />
+  </div>
+
+  <!-- Right Collapsible Panel - Quick Snippets -->
+  <CollapsiblePanelClient
+    title="Snippets"
+    side="right"
+    client:load
+  >
+    <div class="space-y-2">
+      {quickSnippets.map((snippet) => (
+        <div
+          class="p-2 rounded bg-muted/30 hover:bg-muted/50 cursor-pointer transition-colors group"
+        >
+          <span class="text-xs font-ui text-foreground group-hover:text-secondary">
+            {snippet.name}
+          </span>
+          <p class="text-[10px] text-muted-foreground mt-0.5">{snippet.lines} lines</p>
+        </div>
+      ))}
+      <a
+        href="/snippets"
+        class="block w-full text-xs text-center py-2 text-muted-foreground hover:text-secondary transition-colors"
+      >
+        Browse gallery →
+      </a>
+    </div>
+  </CollapsiblePanelClient>
+</Layout>
+

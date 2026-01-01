@@ -1,0 +1,27 @@
+---
+id: caption
+name: /caption
+description: Show a message to players.
+syntax:
+  - /caption [player] [message]
+  - /caption @a [message]
+category: with-args
+lang: en
+args:
+  - name: player
+    type: string
+    required: false
+    description: The username of the player, or @a for all players
+  - name: message
+    type: string
+    required: true
+    description: The message to display
+examples:
+  - code: '/caption PlayerName "Welcome to the server!"'
+    description: Show a welcome message to PlayerName
+  - code: '/caption @a "Round starting in 10 seconds!"'
+    description: Show a message to all players
+---
+
+Displays messages to players. Can target specific players or all players using @a.
+

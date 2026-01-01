@@ -1,0 +1,19 @@
+---
+id: Timer-end
+name: Timer:end
+description: Event triggered when timer ends
+lang: en
+variables:
+  - name: name
+    type: string
+    description: Name of timer
+examples:
+  - code: |
+      if Timer:end
+        /chat @a "Timer ended!"
+        /event raid
+    description: Trigger event when timer ends
+---
+
+Triggered when any timer ends. Useful for timer completion events or time-based mechanics.
+

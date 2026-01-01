@@ -1,0 +1,42 @@
+---
+id: spawnmob
+name: /spawnmob
+description: Spawn mobs with optional flags and properties.
+syntax:
+  - /spawnmob [type] [count]
+  - /spawnmob [type] [count] [row] [col]
+  - /spawnmob [type] [count] [row] [col] [flags]
+category: with-args
+lang: en
+args:
+  - name: type
+    type: string
+    required: true
+    description: The type of mob to spawn
+  - name: count
+    type: number
+    required: true
+    description: The number of mobs to spawn
+  - name: row
+    type: number
+    required: false
+    description: The row coordinate
+  - name: col
+    type: number
+    required: false
+    description: The column coordinate
+  - name: flags
+    type: string
+    required: false
+    description: Optional flags (goal:[entityId], status:[hostile|neutral], mapdisplay:[true|false], taming:[true|false], attackables:[players|mobs|buildings])
+examples:
+  - code: /spawnmob guard 1
+    description: Spawn one guard at your location
+  - code: /spawnmob guard 1 20 20
+    description: Spawn one guard at coordinates (20, 20)
+  - code: /spawnmob guard 1 20 20 goal:4531 status:hostile mapdisplay:true
+    description: Spawn a hostile guard at (20,20) that targets entity 4531 and shows on map
+---
+
+Spawns mobs with various properties and behaviors. Flags allow fine control over mob behavior, targeting, and visibility.
+

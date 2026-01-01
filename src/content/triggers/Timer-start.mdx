@@ -1,0 +1,18 @@
+---
+id: Timer-start
+name: Timer:start
+description: Event triggered when timer starts
+lang: en
+variables:
+  - name: name
+    type: string
+    description: Name of timer
+examples:
+  - code: |
+      if Timer:start
+        /chat @a "Timer started!"
+    description: Handle timer start events
+---
+
+Triggered when any timer starts. Useful for timer-based events or countdown systems.
+

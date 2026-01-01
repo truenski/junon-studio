@@ -1,0 +1,26 @@
+---
+id: sethealth
+name: /sethealth
+description: Set the health of an entity.
+syntax:
+  - /sethealth [entity_id] [health]
+category: with-args
+lang: en
+args:
+  - name: entity_id
+    type: string|number
+    required: true
+    description: The entity ID or selector (e.g., @b[type=core])
+  - name: health
+    type: number
+    required: true
+    description: The health value to set
+examples:
+  - code: /sethealth @b[type=core] 999999
+    description: Set health of all cores to 999999
+  - code: /sethealth 1234 100
+    description: Set health of entity 1234 to 100
+---
+
+Sets the health value for entities. Can use entity selectors for targeting multiple entities.
+

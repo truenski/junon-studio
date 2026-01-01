@@ -1,0 +1,27 @@
+---
+id: RoleChanged
+name: RoleChanged
+description: Event triggered when role changed
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+  - name: previous
+    type: string
+    description: The previous role
+  - name: current
+    type: string
+    description: The current role
+examples:
+  - code: |
+      if RoleChanged
+        /chat @a "$player's role changed from $previous to $current"
+    description: Announce role changes
+---
+
+Triggered when a player's role is changed. Useful for role management, permission updates, or role announcements.
+

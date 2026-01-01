@@ -1,0 +1,30 @@
+---
+id: give
+name: /give
+description: Give an item to a player or entity.
+syntax:
+  - /give [username|entity_id] [type] [count]
+category: with-args
+lang: en
+args:
+  - name: username|entity_id
+    type: string|number
+    required: true
+    description: The username or entity ID to give the item to
+  - name: type
+    type: string
+    required: true
+    description: The type of item to give
+  - name: count
+    type: number
+    required: true
+    description: The number of items to give
+examples:
+  - code: /give PlayerName survival_tool 1
+    description: Give one survival tool to PlayerName
+  - code: /give 1234 copper_ore 5
+    description: Give 5 copper ore to entity with ID 1234
+---
+
+Gives items directly to a player or entity.
+

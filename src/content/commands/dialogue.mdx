@@ -1,0 +1,30 @@
+---
+id: dialogue
+name: /dialogue
+description: Assign dialogue text to mobs.
+syntax:
+  - /dialogue list
+  - /dialogue assign [entity_id] [text]
+  - /dialogue remove [entity_id]
+category: with-args
+lang: en
+args:
+  - name: entity_id
+    type: number
+    required: false
+    description: The entity ID of the mob
+  - name: text
+    type: string
+    required: false
+    description: The dialogue text to assign
+examples:
+  - code: /dialogue list
+    description: List all mobs with assigned dialogue
+  - code: '/dialogue assign 1234 "Hello, traveler!"'
+    description: Assign dialogue "Hello, traveler!" to mob with ID 1234
+  - code: /dialogue remove 1234
+    description: Remove dialogue from mob with ID 1234
+---
+
+Manages dialogue that mobs display when interacted with. Useful for creating NPCs with custom messages.
+

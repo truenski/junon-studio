@@ -1,0 +1,9 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { SnippetsGalleryClient } from "@/components/SnippetsGalleryClient";
+---
+
+<Layout title="JUNON Code - Snippets" currentPage="snippets">
+  <SnippetsGalleryClient client:load />
+</Layout>
+

@@ -1,0 +1,28 @@
+---
+id: oxygen
+name: /oxygen
+description: Manage oxygen of players, mobs, or buildings.
+syntax:
+  - /oxygen set [player|mob|building] [amount]
+  - /oxygen gain [player|mob|building] [amount]
+  - /oxygen lose [player|mob|building] [amount]
+category: with-args
+lang: en
+args:
+  - name: player|mob|building
+    type: string|number
+    required: true
+    description: The username, entity ID, or selector
+  - name: amount
+    type: number
+    required: true
+    description: The oxygen amount
+examples:
+  - code: /oxygen set PlayerName 100
+    description: Set PlayerName's oxygen to 100
+  - code: /oxygen gain 1234 25
+    description: Add 25 oxygen to entity 1234
+---
+
+Manages oxygen values for players, mobs, or buildings. Can set, add, or subtract oxygen.
+

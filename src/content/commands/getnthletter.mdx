@@ -1,0 +1,26 @@
+---
+id: getnthletter
+name: /getnthletter
+description: Extract the nth letter from a word and store it in the $letter variable.
+syntax:
+  - /getnthletter [index] [word]
+category: with-args
+lang: en
+args:
+  - name: index
+    type: number
+    required: true
+    description: The letter index (1-based)
+  - name: word
+    type: string
+    required: true
+    description: The word to extract from
+examples:
+  - code: '/getnthletter 3 "example"'
+    description: Extracts "a" (3rd letter) and stores it in $letter variable
+  - code: '/getnthletter 1 "hello"'
+    description: Extracts "h" and stores it in $letter variable
+---
+
+Extracts a specific letter from a word by index and stores it in the $letter variable for use in subsequent commands.
+

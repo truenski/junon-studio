@@ -1,0 +1,30 @@
+---
+id: PlatformCleaned
+name: PlatformCleaned
+description: Event triggered when platform cleaned
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: entityId
+    type: number
+    description: ID of platform
+  - name: row
+    type: number
+    description: Row of platform
+  - name: col
+    type: number
+    description: Column of platform
+examples:
+  - code: |
+      if PlatformCleaned
+        /chat $player "Platform cleaned at ($row, $col)"
+    description: Track platform cleaning
+---
+
+Triggered when a platform is cleaned by a player or a Clean Bot. Useful for cleaning systems or maintenance tracking.
+

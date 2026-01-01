@@ -1,0 +1,27 @@
+---
+id: ItemSell
+name: ItemSell
+description: Event triggered when player sells items
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: itemType
+    type: string
+    description: Name of item sold
+  - name: count
+    type: number
+    description: Amount of items
+examples:
+  - code: |
+      if ItemSell
+        /chat $player "You sold $itemType for $cost gold"
+    description: Confirm sale to player
+---
+
+Triggered when a player sells an item to a trader. Useful for sale tracking, transaction logs, or sale rewards.
+

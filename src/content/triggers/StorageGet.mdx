@@ -1,0 +1,33 @@
+---
+id: StorageGet
+name: StorageGet
+description: Event triggered when player gets item from storage
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: itemType
+    type: string
+    description: Name of item
+  - name: count
+    type: number
+    description: Count of item
+  - name: storageId
+    type: number
+    description: ID of storage
+  - name: storageType
+    type: string
+    description: Type of storage
+examples:
+  - code: |
+      if StorageGet
+        /chat $player "You retrieved $count $itemType"
+    description: Track storage retrieval
+---
+
+Triggered when a player retrieves items from storage. Useful for storage tracking or inventory management.
+

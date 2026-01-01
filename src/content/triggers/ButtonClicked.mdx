@@ -1,0 +1,27 @@
+---
+id: ButtonClicked
+name: ButtonClicked
+description: Event triggered when a player clicks custom button
+lang: en
+variables:
+  - name: player
+    type: string
+    description: Username of player that clicked
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: entityId
+    type: number
+    description: ID of entity button attached
+  - name: name
+    type: string
+    description: Name of button clicked
+examples:
+  - code: |
+      if ButtonClicked
+        /chat $player "Button clicked!"
+    description: Handle button interactions
+---
+
+Triggered when a player clicks a button. Useful for interactive elements, doors, or custom button mechanics.
+

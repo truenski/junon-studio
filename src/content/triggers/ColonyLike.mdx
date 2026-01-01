@@ -1,0 +1,19 @@
+---
+id: ColonyLike
+name: ColonyLike
+description: Event triggered when player likes colony
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The username of the player who liked
+examples:
+  - code: |
+      if ColonyLike
+        if $player != "PlayerOwner"
+          /chat @a "$player liked the colony for public attention and to show appreciation"
+    description: Announce when players like the colony
+---
+
+Triggered when a player likes a colony. Useful for appreciation systems or colony feedback.
+

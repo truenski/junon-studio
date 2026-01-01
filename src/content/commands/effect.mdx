@@ -1,0 +1,30 @@
+---
+id: effect
+name: /effect
+description: Add or remove status effects from a player.
+syntax:
+  - /effect give [player] [effectname]
+  - /effect clear [player] [effectname]
+  - /effect clear [player]
+category: with-args
+lang: en
+args:
+  - name: player
+    type: string
+    required: true
+    description: The username of the player
+  - name: effectname
+    type: string
+    required: false
+    description: The name of the effect (poison, fire, drunk, fear, miasma, spin, rage, invisible, haste, paralyze, smoke)
+examples:
+  - code: /effect give PlayerName poison
+    description: Apply poison effect to PlayerName
+  - code: /effect clear PlayerName
+    description: Clear all effects from PlayerName
+  - code: /effect clear PlayerName fire
+    description: Remove only the fire effect from PlayerName
+---
+
+Manages status effects on players. Available effects include poison, fire, drunk, fear, miasma, spin, rage, invisible, haste, paralyze, and smoke.
+

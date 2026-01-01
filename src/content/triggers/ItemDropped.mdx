@@ -1,0 +1,27 @@
+---
+id: ItemDropped
+name: ItemDropped
+description: Event triggered when player drops item
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: itemType
+    type: string
+    description: Name of item
+  - name: count
+    type: number
+    description: Count of item
+examples:
+  - code: |
+      if ItemDropped
+        /chat $player "You dropped $itemType"
+    description: Track item drops
+---
+
+Triggered when a player drops an item. Useful for drop tracking or item management.
+

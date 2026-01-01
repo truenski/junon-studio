@@ -1,0 +1,30 @@
+---
+id: force
+name: /force
+description: Apply directional force to an entity.
+syntax:
+  - /force [player] [x] [y]
+category: with-args
+lang: en
+args:
+  - name: player
+    type: string
+    required: true
+    description: The username of the player
+  - name: x
+    type: number
+    required: true
+    description: The force in the X direction
+  - name: y
+    type: number
+    required: true
+    description: The force in the Y direction
+examples:
+  - code: /force PlayerName -5 -5
+    description: Apply force of (-5, -5) to PlayerName
+  - code: /force PlayerName 10 0
+    description: Push PlayerName 10 units to the right
+---
+
+Applies directional force to push or pull entities in a specific direction.
+

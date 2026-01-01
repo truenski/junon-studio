@@ -1,0 +1,18 @@
+---
+id: Timer-1-start
+name: Timer:1:start
+description: Event triggered when timer "1" starts.
+lang: en
+variables:
+  - name: duration
+    type: number
+    description: The duration of the timer in seconds
+examples:
+  - code: |
+      if Timer:1:start
+        /chat @a "Timer 1 started"
+    description: Handle timer 1 start
+---
+
+Triggered when a timer named "1" starts. Timers can be named with numbers or custom names.
+

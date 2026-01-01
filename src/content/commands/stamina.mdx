@@ -1,0 +1,28 @@
+---
+id: stamina
+name: /stamina
+description: Manage stamina of players, mobs, or buildings.
+syntax:
+  - /stamina set [player|mob|building] [amount]
+  - /stamina gain [player|mob|building] [amount]
+  - /stamina lose [player|mob|building] [amount]
+category: with-args
+lang: en
+args:
+  - name: player|mob|building
+    type: string|number
+    required: true
+    description: The username, entity ID, or selector
+  - name: amount
+    type: number
+    required: true
+    description: The stamina amount
+examples:
+  - code: /stamina set PlayerName 100
+    description: Set PlayerName's stamina to 100
+  - code: /stamina gain 1234 30
+    description: Add 30 stamina to entity 1234
+---
+
+Manages stamina values for players, mobs, or buildings. Can set, add, or subtract stamina.
+

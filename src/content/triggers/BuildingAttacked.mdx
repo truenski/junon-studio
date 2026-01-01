@@ -1,0 +1,34 @@
+---
+id: BuildingAttacked
+name: BuildingAttacked
+description: Event triggered when a building gets damaged.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the attacked building
+  - name: entityType
+    type: string
+    description: The type of attacked building
+  - name: attackingPlayer
+    type: string
+    description: The username of the player who attacked (if applicable)
+  - name: attackingPlayerRole
+    type: string
+    description: The role of the attacking player
+  - name: attackingMob
+    type: number
+    description: The ID of the mob that attacked (if applicable)
+  - name: damage
+    type: number
+    description: The amount of damage dealt
+examples:
+  - code: |
+      if BuildingAttacked
+        if $entityType == "Bed"
+          /chat $attackingPlayer "The bed got attacked!"
+    description: Alert when specific buildings are attacked
+---
+
+Triggered when a placed structure or building gets damaged. Useful for building protection, damage tracking, or defense systems.
+

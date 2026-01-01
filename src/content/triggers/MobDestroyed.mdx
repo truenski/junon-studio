@@ -1,0 +1,31 @@
+---
+id: MobDestroyed
+name: MobDestroyed
+description: Event triggered when a mob dies.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the mob that died
+  - name: entityType
+    type: string
+    description: The type of mob that died
+  - name: killingPlayer
+    type: string
+    description: The username of the player who killed (if applicable)
+  - name: killingPlayerRole
+    type: string
+    description: The role of the killing player
+  - name: killingMob
+    type: number
+    description: The ID of the mob that killed (if applicable)
+examples:
+  - code: |
+      if MobDestroyed
+        if $entityType == "guard"
+          /gold gain $killingPlayer 10
+    description: Reward gold for killing specific mobs
+---
+
+Triggered when a mob is killed by another mob or a player. Useful for rewards, loot drops, or mob death events.
+

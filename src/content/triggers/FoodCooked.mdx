@@ -1,0 +1,24 @@
+---
+id: FoodCooked
+name: FoodCooked
+description: Event triggered when food cooked
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: ID of user who cooked food
+  - name: player
+    type: string
+    description: Username of player
+  - name: foodType
+    type: string
+    description: Type of food
+examples:
+  - code: |
+      if FoodCooked
+        /chat $player "You cooked $foodType"
+    description: Track food cooking
+---
+
+Triggered when a player cooks food. Useful for cooking systems or cooking achievements.
+

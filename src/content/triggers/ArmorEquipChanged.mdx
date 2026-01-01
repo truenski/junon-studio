@@ -1,0 +1,28 @@
+---
+id: ArmorEquipChanged
+name: ArmorEquipChanged
+description: Event triggered when armor equip changed
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+  - name: previous
+    type: string
+    description: The previous armor type
+  - name: current
+    type: string
+    description: The current armor type
+examples:
+  - code: |
+      if ArmorEquipChanged
+        if $current == $previous
+          /chat $player "You changed your armor"
+    description: Track armor changes
+---
+
+Triggered when a player's clothing or spacesuit is changed. Useful for armor tracking or equipment systems.
+

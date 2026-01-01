@@ -1,0 +1,31 @@
+---
+id: HungerChanged
+name: HungerChanged
+description: Event triggered when player hunger changed
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+  - name: previous
+    type: number
+    description: The previous hunger value
+  - name: current
+    type: number
+    description: The current hunger value
+  - name: delta
+    type: number
+    description: The amount the hunger changed
+examples:
+  - code: |
+      if HungerChanged
+        if $current <= 20
+          /chat $player "You are starving!"
+    description: Alert player when hunger is critical
+---
+
+Triggered when a player's hunger level changes. Useful for hunger monitoring, starvation warnings, or food systems.
+

@@ -1,0 +1,30 @@
+---
+id: health
+name: /health
+description: Manage health of players, mobs, or buildings.
+syntax:
+  - /health set [player|mob|building] [amount]
+  - /health gain [player|mob|building] [amount]
+  - /health lose [player|mob|building] [amount]
+category: with-args
+lang: en
+args:
+  - name: player|mob|building
+    type: string|number
+    required: true
+    description: The username, entity ID, or selector
+  - name: amount
+    type: number
+    required: true
+    description: The health amount
+examples:
+  - code: /health set PlayerName 100
+    description: Set PlayerName's health to 100
+  - code: /health gain 1234 50
+    description: Add 50 health to entity 1234
+  - code: /health lose PlayerName 10
+    description: Remove 10 health from PlayerName
+---
+
+Manages health values for players, mobs, or buildings. Can set, add, or subtract health.
+

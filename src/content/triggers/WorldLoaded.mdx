@@ -1,0 +1,16 @@
+---
+id: WorldLoaded
+name: WorldLoaded
+description: Event triggered when the world is first loaded. Useful for setting up commands such as sidebar etc.
+lang: en
+variables: []
+examples:
+  - code: |
+      if WorldLoaded
+        /sidebar set 1 "Welcome to Junon.io"
+        /sidebar set 2 "Players: $playerCount"
+    description: Set up sidebar and initial world state
+---
+
+Triggered when a world is first loaded. Useful for initialization, setting up sidebars, or world setup commands. All variables can be used with this trigger.
+

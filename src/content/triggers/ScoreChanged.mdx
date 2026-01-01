@@ -1,0 +1,31 @@
+---
+id: ScoreChanged
+name: ScoreChanged
+description: Event triggered when player score changed
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+  - name: previous
+    type: number
+    description: The previous score
+  - name: current
+    type: number
+    description: The current score
+  - name: delta
+    type: number
+    description: The amount the score changed
+examples:
+  - code: |
+      if ScoreChanged
+        if $current >= 100
+          /chat @a "$player reached 100 points!"
+    description: Announce score milestones
+---
+
+Triggered when a player's score changes. Useful for score tracking, achievements, or milestone announcements.
+

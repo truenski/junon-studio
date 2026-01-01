@@ -10,10 +10,11 @@ import {
   getSuggestionContext, 
   getAutoIndent,
   convertJunonToJSON,
+  initializeMDXData,
   TRIGGER_EVENTS,
   COMMANDS,
-  ValidationError 
 } from "@/hooks/useJunonSyntax";
+import type { ValidationError } from "@/hooks/useJunonSyntax";
 
 const defaultCode = `@trigger onPlayerJoin
     @commands
@@ -48,6 +49,13 @@ export function CodeEditor() {
   const lineNumbersRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const fileNameInputRef = useRef<HTMLInputElement>(null);
+
+  // Focus textarea on mount
+  useEffect(() => {
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+  }, []);
 
   // Validate code on change
   useEffect(() => {
@@ -113,25 +121,7 @@ export function CodeEditor() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Handle Enter key for auto-indent
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      const textarea = editorRef.current;
-      if (!textarea) return;
-      
-      const cursorPos = textarea.selectionStart;
-      const indent = getAutoIndent(code, cursorPos);
-      const newCode = code.slice(0, cursorPos) + '\n' + indent + code.slice(cursorPos);
-      setCode(newCode);
-      
-      // Set cursor position after indent
-      setTimeout(() => {
-        textarea.selectionStart = textarea.selectionEnd = cursorPos + 1 + indent.length;
-      }, 0);
-      return;
-    }
-
-    // Handle suggestion navigation
+    // Handle suggestion navigation first (only when suggestions are visible)
     if (showSuggestions && suggestions.length > 0) {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -147,19 +137,42 @@ export function CodeEditor() {
         );
         return;
       }
-      if (e.key === 'Tab' || e.key === 'Enter') {
+      if (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey)) {
         e.preventDefault();
         insertSuggestion(suggestions[selectedSuggestionIndex]);
         return;
       }
       if (e.key === 'Escape') {
+        e.preventDefault();
         setShowSuggestions(false);
         return;
       }
     }
 
-    // Tab for manual indent
-    if (e.key === 'Tab') {
+    // Handle Enter key for auto-indent - apenas quando necessário
+    if (e.key === 'Enter' && !e.shiftKey && !showSuggestions) {
+      const textarea = editorRef.current;
+      if (textarea) {
+        const cursorPos = textarea.selectionStart;
+        const indent = getAutoIndent(code, cursorPos);
+        
+        // Apenas prevenir se realmente houver indentação a aplicar
+        if (indent.length > 0) {
+          e.preventDefault();
+          const newCode = code.slice(0, cursorPos) + '\n' + indent + code.slice(cursorPos);
+          setCode(newCode);
+          
+          setTimeout(() => {
+            textarea.selectionStart = textarea.selectionEnd = cursorPos + 1 + indent.length;
+          }, 0);
+          return;
+        }
+      }
+      // Se não precisar de auto-indent, deixar o Enter funcionar normalmente
+    }
+
+    // Tab for manual indent (only when not in suggestions)
+    if (e.key === 'Tab' && !showSuggestions) {
       e.preventDefault();
       const textarea = editorRef.current;
       if (!textarea) return;
@@ -437,7 +450,7 @@ export function CodeEditor() {
 
       {/* Code Area with Resizable Bottom Panel */}
       <ResizablePanelGroup direction="vertical" className="flex-1">
-        <ResizablePanel defaultSize={bottomPanelOpen ? 70 : 100} minSize={30}>
+        <ResizablePanel defaultSize={100} minSize={30} maxSize={100}>
           <div className="h-full relative overflow-hidden bg-background">
         {/* Line numbers - fixed position */}
         <div 
@@ -483,6 +496,7 @@ export function CodeEditor() {
           onScroll={handleScroll}
           className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 bg-transparent text-transparent caret-primary resize-none focus:outline-none overflow-auto z-20"
           spellCheck={false}
+          autoFocus
         />
 
         {/* Suggestions dropdown */}

@@ -1,0 +1,21 @@
+---
+id: tick
+name: tick
+description: Event triggered when timer is ticking
+lang: en
+variables:
+  - name: seconds
+    type: number
+    description: Number of seconds elapsed
+  - name: remaining
+    type: number
+    description: Number of seconds remaining before timer ends
+examples:
+  - code: |
+      if tick
+        /sidebar set 1 "Time remaining: $remaining"
+    description: Update sidebar with timer countdown
+---
+
+Triggered every second while a timer is running. This is a generic timer tick event without a specific timer name.
+

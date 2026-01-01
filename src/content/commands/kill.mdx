@@ -1,0 +1,37 @@
+---
+id: kill
+name: /kill
+description: Kill entities, mobs, or items.
+syntax:
+  - /kill [name]
+  - /kill [mobtype]
+  - /kill pickup [itemtype]
+  - /kill corpse [mobtype]
+category: with-args
+lang: en
+args:
+  - name: name
+    type: string
+    required: false
+    description: The username or entity name
+  - name: mobtype
+    type: string
+    required: false
+    description: The type of mob to kill
+  - name: itemtype
+    type: string
+    required: false
+    description: The type of item pickup to kill
+examples:
+  - code: /kill PlayerName
+    description: Kill the player named PlayerName
+  - code: /kill guard
+    description: Kill all guards
+  - code: /kill pickup survival_tool
+    description: Remove all survival_tool pickups
+  - code: /kill corpse Human
+    description: Remove all Human corpses
+---
+
+Kills entities, mobs, item pickups, or corpses based on the specified target.
+

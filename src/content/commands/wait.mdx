@@ -1,0 +1,22 @@
+---
+id: wait
+name: /wait
+description: Delay the next command in a command block by specified seconds.
+syntax:
+  - /wait [seconds]
+category: with-args
+lang: en
+args:
+  - name: seconds
+    type: number
+    required: true
+    description: The number of seconds to wait
+examples:
+  - code: /wait 5
+    description: Wait 5 seconds before executing the next command
+  - code: /wait 0.5
+    description: Wait 0.5 seconds (500ms)
+---
+
+Delays execution of the next command in a command block. Only works within command blocks, not in chat.
+

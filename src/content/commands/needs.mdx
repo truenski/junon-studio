@@ -1,0 +1,30 @@
+---
+id: needs
+name: /needs
+description: Add mob needs for AI behavior.
+syntax:
+  - /needs list
+  - /needs assign [entity_id] [type]
+  - /needs remove [entity_id]
+category: with-args
+lang: en
+args:
+  - name: entity_id
+    type: number
+    required: false
+    description: The entity ID
+  - name: type
+    type: string
+    required: false
+    description: The need type
+examples:
+  - code: /needs list
+    description: List all mobs with assigned needs
+  - code: /needs assign 1234 food
+    description: Assign "food" need to mob 1234
+  - code: /needs remove 1234
+    description: Remove needs from mob 1234
+---
+
+Manages AI needs for mobs. Needs affect mob behavior and decision-making.
+

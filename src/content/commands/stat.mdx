@@ -1,0 +1,25 @@
+---
+id: stat
+name: /stat
+description: Modify building or mob stats.
+syntax:
+  - /stat [entity_id] [stat_name] [value]
+category: with-args
+lang: en
+args:
+  - name: entity_id
+    type: number
+    required: true
+    description: The entity ID
+  - name: stat_name
+    type: string
+    required: true
+    description: The name of the stat to modify
+  - name: value
+    type: number
+    required: true
+    description: The new value for the stat
+---
+
+Modifies statistics of buildings or mobs. Allows fine-tuning entity properties.
+

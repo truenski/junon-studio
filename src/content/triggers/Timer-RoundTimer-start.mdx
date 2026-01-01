@@ -1,0 +1,18 @@
+---
+id: Timer-RoundTimer-start
+name: Timer:RoundTimer:start
+description: Event triggered when the RoundTimer starts.
+lang: en
+variables:
+  - name: duration
+    type: number
+    description: The duration of the timer in seconds
+examples:
+  - code: |
+      if Timer:RoundTimer:start
+        /chat @a "Round started! Duration: $duration seconds"
+    description: Announce round start
+---
+
+Triggered when a specific timer named "RoundTimer" starts. Useful for round-based game modes.
+

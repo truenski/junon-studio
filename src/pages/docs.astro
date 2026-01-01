@@ -1,0 +1,328 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { getCollection } from "astro:content";
+import SearchBar from "@/components/SearchBar.astro";
+import FilterBar from "@/components/FilterBar.astro";
+import AccordionItem from "@/components/AccordionItem.astro";
+
+const commands = await getCollection("commands");
+const triggers = await getCollection("triggers");
+const actions = await getCollection("actions");
+const functions = await getCollection("functions");
+const variables = await getCollection("variables");
+const mobs = await getCollection("mobs");
+const entities = await getCollection("entities");
+
+// Prepare all items with their data for search
+const allItems: Array<{
+  id: string;
+  title: string;
+  category?: string;
+  description: string;
+  content: any;
+  type: string;
+  searchableText: string;
+}> = [];
+
+// Add commands
+commands.forEach((cmd) => {
+  const searchableText = [
+    cmd.data.name,
+    cmd.data.description,
+    ...(cmd.data.syntax || []),
+    ...(cmd.data.args?.map((a: any) => `${a.name} ${a.description}`) || []),
+    ...(cmd.data.examples?.map((e: any) => `${e.code} ${e.description}`) || []),
+  ].join(" ").toLowerCase();
+  
+  allItems.push({
+    id: cmd.id,
+    title: cmd.data.name,
+    category: cmd.data.category,
+    description: cmd.data.description,
+    content: cmd,
+    type: "command",
+    searchableText,
+  });
+});
+
+// Add triggers
+triggers.forEach((trigger) => {
+  const searchableText = [
+    trigger.data.name,
+    trigger.data.description,
+    ...(trigger.data.variables?.map((v: any) => `${v.name} ${v.description}`) || []),
+    ...(trigger.data.examples?.map((e: any) => `${e.code} ${e.description}`) || []),
+  ].join(" ").toLowerCase();
+  
+  allItems.push({
+    id: trigger.id,
+    title: trigger.data.name,
+    description: trigger.data.description,
+    content: trigger,
+    type: "trigger",
+    searchableText,
+  });
+});
+
+// Add actions
+actions.forEach((action) => {
+  const searchableText = [
+    action.data.name,
+    action.data.description,
+    ...(action.data.syntax || []),
+    ...(action.data.examples?.map((e: any) => `${e.code} ${e.description}`) || []),
+  ].join(" ").toLowerCase();
+  
+  allItems.push({
+    id: action.id,
+    title: action.data.name,
+    description: action.data.description,
+    content: action,
+    type: "action",
+    searchableText,
+  });
+});
+
+// Add functions
+functions.forEach((func) => {
+  const searchableText = [
+    func.data.name,
+    func.data.description,
+    func.data.syntax || "",
+    ...(func.data.parameters?.map((p: any) => `${p.name} ${p.description}`) || []),
+    func.data.returns || "",
+    ...(func.data.examples?.map((e: any) => `${e.code} ${e.description}`) || []),
+  ].join(" ").toLowerCase();
+  
+  allItems.push({
+    id: func.id,
+    title: func.data.name,
+    description: func.data.description,
+    content: func,
+    type: "function",
+    searchableText,
+  });
+});
+
+// Add variables
+variables.forEach((variable) => {
+  const searchableText = [
+    variable.data.name,
+    variable.data.description,
+    variable.data.type,
+    ...(variable.data.examples?.map((e: any) => `${e.code} ${e.description}`) || []),
+  ].join(" ").toLowerCase();
+  
+  allItems.push({
+    id: variable.id,
+    title: `$${variable.data.name}`,
+    description: variable.data.description,
+    content: variable,
+    type: "variable",
+    searchableText,
+  });
+});
+
+// Add mobs
+mobs.forEach((mob) => {
+  const searchableText = [
+    mob.data.name,
+    mob.data.description,
+    ...(mob.data.properties?.map((p: any) => `${p.name} ${p.value}`) || []),
+    ...(mob.data.examples?.map((e: any) => `${e.code} ${e.description}`) || []),
+  ].join(" ").toLowerCase();
+  
+  allItems.push({
+    id: mob.id,
+    title: mob.data.name,
+    description: mob.data.description,
+    content: mob,
+    type: "mob",
+    searchableText,
+  });
+});
+
+// Add entities
+entities.forEach((entity) => {
+  const searchableText = [
+    entity.data.name,
+    entity.data.description,
+    entity.data.type,
+    ...(entity.data.properties?.map((p: any) => `${p.name} ${p.value}`) || []),
+    ...(entity.data.examples?.map((e: any) => `${e.code} ${e.description}`) || []),
+  ].join(" ").toLowerCase();
+  
+  allItems.push({
+    id: entity.id,
+    title: entity.data.name,
+    description: entity.data.description,
+    content: entity,
+    type: "entity",
+    searchableText,
+  });
+});
+
+// Categories for filters
+const categories = [
+  { id: "command", name: "Commands", count: commands.length },
+  { id: "trigger", name: "Triggers", count: triggers.length },
+  { id: "action", name: "Actions", count: actions.length },
+  { id: "function", name: "Functions", count: functions.length },
+  { id: "variable", name: "Variables", count: variables.length },
+  { id: "mob", name: "Mobs", count: mobs.length },
+  { id: "entity", name: "Entities", count: entities.length },
+];
+---
+
+<Layout title="JUNON Code - Documentation" currentPage="docs">
+  <div class="flex-1 overflow-y-auto p-6">
+    <h1 class="text-4xl font-bold mb-6">Junon.io Documentation</h1>
+    
+    {allItems.length === 0 && (
+      <div class="mb-6 p-4 bg-yellow-500/20 border border-yellow-500/50 rounded-lg">
+        <p class="text-sm text-yellow-200 font-bold">
+          ⚠️ No documentation items found. 
+        </p>
+        <p class="text-xs text-yellow-300 mt-2">
+          Commands: {commands.length} | 
+          Triggers: {triggers.length} | 
+          Actions: {actions.length} | 
+          Functions: {functions.length} | 
+          Variables: {variables.length} | 
+          Mobs: {mobs.length} | 
+          Entities: {entities.length}
+        </p>
+        <p class="text-xs text-yellow-300 mt-2">
+          Total items: {allItems.length}
+        </p>
+      </div>
+    )}
+    
+    {allItems.length > 0 && (
+      <div class="mb-4 p-2 bg-green-500/20 border border-green-500/50 rounded text-xs text-green-200">
+        ✓ Loaded {allItems.length} documentation items
+      </div>
+    )}
+    
+    <SearchBar />
+    <FilterBar categories={categories} />
+    
+    <div id="items-container" class="space-y-2">
+      {allItems.map((item, index) => (
+        <AccordionItem
+          id={item.id}
+          title={item.title}
+          category={item.category}
+          description={item.description}
+          content={item.content}
+          type={item.type as any}
+        />
+      ))}
+    </div>
+    
+    <div id="no-results" class="hidden text-center py-12 text-muted-foreground">
+      <p class="text-lg">No results found</p>
+      <p class="text-sm mt-2">Try adjusting your search or filters</p>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const searchInput = document.getElementById("search-input") as HTMLInputElement;
+    const filterCheckboxes = document.querySelectorAll(".filter-checkbox") as NodeListOf<HTMLInputElement>;
+    const itemsContainer = document.getElementById("items-container");
+    const noResults = document.getElementById("no-results");
+    const accordionItems = document.querySelectorAll(".accordion-item");
+    
+    // Store original items data with full searchable text
+    const itemsData = Array.from(accordionItems).map((item) => {
+      const el = item as HTMLElement;
+      const searchable = el.getAttribute("data-searchable") || "";
+      const title = el.getAttribute("data-title") || "";
+      const description = el.getAttribute("data-description") || "";
+      const category = el.getAttribute("data-category") || "";
+      
+      return {
+        element: item,
+        searchableText: searchable || `${title} ${description} ${category}`.toLowerCase(),
+        type: el.getAttribute("data-type") || "",
+      };
+    });
+    
+    function filterItems() {
+      const searchTerm = (searchInput?.value || "").toLowerCase().trim();
+      const activeFilters = Array.from(filterCheckboxes)
+        .filter((cb) => cb.checked)
+        .map((cb) => cb.getAttribute("data-category"));
+      
+      let visibleCount = 0;
+      
+      let visibleIndex = 0;
+      itemsData.forEach(({ element, searchableText, type }) => {
+        const matchesSearch = !searchTerm || searchableText.includes(searchTerm);
+        const matchesFilter = activeFilters.length === 0 || activeFilters.includes(type);
+        const shouldShow = matchesSearch && matchesFilter;
+        
+        if (shouldShow) {
+          element.classList.remove("hidden");
+          element.style.display = "block";
+          (element as HTMLElement).style.setProperty("--index", String(visibleIndex));
+          // Trigger reflow for animation
+          void (element as HTMLElement).offsetHeight;
+          visibleIndex++;
+          visibleCount++;
+        } else {
+          element.classList.add("hidden");
+          // Small delay before hiding for smooth animation
+          setTimeout(() => {
+            if (element.classList.contains("hidden")) {
+              element.style.display = "none";
+            }
+          }, 300);
+        }
+      });
+      
+      // Show/hide no results message
+      if (noResults) {
+        if (visibleCount === 0) {
+          noResults.classList.remove("hidden");
+          if (itemsContainer) itemsContainer.classList.add("hidden");
+        } else {
+          noResults.classList.add("hidden");
+          if (itemsContainer) itemsContainer.classList.remove("hidden");
+        }
+      }
+    }
+    
+    // Search input event
+    searchInput?.addEventListener("input", filterItems);
+    
+    // Filter checkbox events
+    filterCheckboxes.forEach((checkbox) => {
+      checkbox.addEventListener("change", filterItems);
+    });
+    
+    // Initial filter
+    filterItems();
+    
+    // Handle hash navigation after filtering
+    if (window.location.hash) {
+      const hash = window.location.hash.substring(1);
+      const [type, ...idParts] = hash.split("-");
+      const itemId = idParts.join("-");
+      
+      setTimeout(() => {
+        const targetItem = document.querySelector(`#accordion-${type}-${itemId}`) as HTMLElement;
+        if (targetItem && !targetItem.classList.contains("hidden")) {
+          targetItem.scrollIntoView({ behavior: "smooth", block: "start" });
+          setTimeout(() => {
+            if ((window as any).toggleAccordion) {
+              (window as any).toggleAccordion(itemId, true);
+            }
+          }, 200);
+        }
+      }, 500);
+    }
+  });
+</script>

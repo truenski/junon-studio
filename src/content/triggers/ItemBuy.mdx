@@ -1,0 +1,27 @@
+---
+id: ItemBuy
+name: ItemBuy
+description: Event triggered when player buys items
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: itemType
+    type: string
+    description: Name of item purchased
+  - name: count
+    type: number
+    description: Amount of items
+examples:
+  - code: |
+      if ItemBuy
+        /chat $player "You bought $itemType for $cost gold"
+    description: Confirm purchase to player
+---
+
+Triggered when a player buys an item from a trader. Useful for purchase tracking, transaction logs, or purchase rewards.
+

@@ -1,0 +1,31 @@
+---
+id: StaminaChanged
+name: StaminaChanged
+description: Event triggered when player stamina changed
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+  - name: previous
+    type: number
+    description: The previous stamina value
+  - name: current
+    type: number
+    description: The current stamina value
+  - name: delta
+    type: number
+    description: The amount the stamina changed
+examples:
+  - code: |
+      if StaminaChanged
+        if $current <= 10
+          /chat $player "You are exhausted!"
+    description: Alert player when stamina is low
+---
+
+Triggered when a player's stamina changes. Useful for stamina monitoring, exhaustion warnings, or stamina-based mechanics.
+

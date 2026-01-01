@@ -1,0 +1,26 @@
+---
+id: suitcolor
+name: /suitcolor
+description: Change player spacesuit color.
+syntax:
+  - /suitcolor [player] [color]
+category: with-args
+lang: en
+args:
+  - name: player
+    type: string
+    required: true
+    description: The username of the player
+  - name: color
+    type: string
+    required: true
+    description: The color name (e.g., red, blue, green)
+examples:
+  - code: /suitcolor PlayerName red
+    description: Change PlayerName's spacesuit to red
+  - code: /suitcolor PlayerName blue
+    description: Change PlayerName's spacesuit to blue
+---
+
+Changes the color of a player's spacesuit.
+

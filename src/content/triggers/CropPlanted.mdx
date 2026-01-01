@@ -1,0 +1,24 @@
+---
+id: CropPlanted
+name: CropPlanted
+description: Event triggered when a crop gets planted
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: ID of crop
+  - name: entityType
+    type: string
+    description: Type of crop
+  - name: player
+    type: string
+    description: Username of player who planted crop
+examples:
+  - code: |
+      if CropPlanted
+        /chat $player "You planted $cropType"
+    description: Track crop planting
+---
+
+Triggered when a player plants a crop. Useful for farming systems or planting tracking.
+

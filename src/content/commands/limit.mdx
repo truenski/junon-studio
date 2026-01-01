@@ -1,0 +1,30 @@
+---
+id: limit
+name: /limit
+description: Modify build limits for structures.
+syntax:
+  - /limit list
+  - /limit set [building] [count]
+  - /limit remove [building]
+category: with-args
+lang: en
+args:
+  - name: building
+    type: string
+    required: false
+    description: The type of building
+  - name: count
+    type: number
+    required: false
+    description: The maximum count allowed
+examples:
+  - code: /limit list
+    description: List all building limits
+  - code: /limit set Wall 100
+    description: Set maximum Wall count to 100
+  - code: /limit remove Wall
+    description: Remove the limit on Walls
+---
+
+Manages build limits for structures. Prevents players from placing too many of certain building types.
+

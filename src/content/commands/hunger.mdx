@@ -1,0 +1,28 @@
+---
+id: hunger
+name: /hunger
+description: Manage hunger of players, mobs, or buildings.
+syntax:
+  - /hunger set [player|mob|building] [amount]
+  - /hunger gain [player|mob|building] [amount]
+  - /hunger lose [player|mob|building] [amount]
+category: with-args
+lang: en
+args:
+  - name: player|mob|building
+    type: string|number
+    required: true
+    description: The username, entity ID, or selector
+  - name: amount
+    type: number
+    required: true
+    description: The hunger amount
+examples:
+  - code: /hunger set PlayerName 100
+    description: Set PlayerName's hunger to 100
+  - code: /hunger gain 1234 20
+    description: Add 20 hunger to entity 1234
+---
+
+Manages hunger values for players, mobs, or buildings. Can set, add, or subtract hunger.
+

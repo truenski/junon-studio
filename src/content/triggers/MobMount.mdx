@@ -1,0 +1,27 @@
+---
+id: MobMount
+name: MobMount
+description: Event triggered when a player mounts a mob.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the mob
+  - name: entityType
+    type: string
+    description: The type of mob
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+examples:
+  - code: |
+      if MobMount
+        /chat $player "You mounted a $entityType!"
+    description: Notify player when they mount a mob
+---
+
+Triggered when a player mounts a mob. Useful for mount systems or vehicle mechanics.
+

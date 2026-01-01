@@ -1,0 +1,31 @@
+---
+id: OxygenChanged
+name: OxygenChanged
+description: Event triggered when player oxygen changed
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+  - name: previous
+    type: number
+    description: The previous oxygen level
+  - name: current
+    type: number
+    description: The current oxygen level
+  - name: delta
+    type: number
+    description: The amount the oxygen changed
+examples:
+  - code: |
+      if OxygenChanged
+        if $current <= 10
+          /chat $player "Low oxygen warning!"
+    description: Alert player when oxygen is low
+---
+
+Triggered when a player's oxygen level changes. Useful for oxygen monitoring, low oxygen warnings, or space-related mechanics.
+

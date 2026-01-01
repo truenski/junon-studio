@@ -1,0 +1,30 @@
+---
+id: MobFeed
+name: MobFeed
+description: Event triggered when a mob is fed.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the mob that was fed
+  - name: entityType
+    type: string
+    description: The type of mob
+  - name: playerId
+    type: number
+    description: The ID of the player who fed the mob
+  - name: player
+    type: string
+    description: The username of the player who fed the mob
+  - name: itemType
+    type: string
+    description: The item that the mob was fed
+examples:
+  - code: |
+      if MobFeed
+        /chat $player "You fed a $entityType!"
+    description: Notify player when they feed a mob
+---
+
+Triggered when a player feeds a mob. Useful for taming mechanics, mob interactions, or feeding systems.
+

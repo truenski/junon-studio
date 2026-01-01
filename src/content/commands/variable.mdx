@@ -1,0 +1,38 @@
+---
+id: variable
+name: /variable
+description: Create and manage variables for command blocks.
+syntax:
+  - /variable list
+  - /variable set [name] [value]
+  - /variable delete [name]
+  - /variable gain [name] [amount]
+  - /variable lose [name] [amount]
+category: with-args
+lang: en
+args:
+  - name: name
+    type: string
+    required: false
+    description: The variable name (without $ prefix)
+  - name: value
+    type: string|number
+    required: false
+    description: The variable value
+  - name: amount
+    type: number
+    required: false
+    description: The amount to add or subtract
+examples:
+  - code: /variable list
+    description: List all variables
+  - code: /variable set powerlevel 10
+    description: Create a variable named "powerlevel" with value 10
+  - code: /variable gain powerlevel 5
+    description: Add 5 to the powerlevel variable
+  - code: /variable lose powerlevel 2
+    description: Subtract 2 from the powerlevel variable
+---
+
+Manages variables that can be used in command blocks. Access variables using $ prefix (e.g., $powerlevel).
+

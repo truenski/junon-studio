@@ -1,0 +1,28 @@
+---
+id: BuildingPlaced
+name: BuildingPlaced
+description: Event triggered when a building gets placed.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the building
+  - name: entityType
+    type: string
+    description: The type of building
+  - name: player
+    type: string
+    description: The username of the player who placed it
+  - name: playerId
+    type: number
+    description: The ID of the player
+examples:
+  - code: |
+      if BuildingPlaced
+        if $player == "JunonPlayer"
+          /chat @a "JunonPlayer placed something"
+    description: Announce when specific players place buildings
+---
+
+Triggered when a building is placed. Useful for building tracking, placement restrictions, or construction events.
+

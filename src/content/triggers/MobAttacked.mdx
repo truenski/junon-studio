@@ -1,0 +1,34 @@
+---
+id: MobAttacked
+name: MobAttacked
+description: Event triggered when a mob gets damaged.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the mob that was attacked
+  - name: entityType
+    type: string
+    description: The type of mob that was attacked
+  - name: attackingPlayer
+    type: string
+    description: The username of the player who attacked (if applicable)
+  - name: attackingPlayerRole
+    type: string
+    description: The role of the attacking player
+  - name: attackingMob
+    type: number
+    description: The ID of the mob that attacked (if applicable)
+  - name: damage
+    type: number
+    description: The amount of damage dealt
+examples:
+  - code: |
+      if MobAttacked
+        if $entityType == "guard"
+          /chat @a "A guard is under attack!"
+    description: Alert when specific mob types are attacked
+---
+
+Triggered when a mob is damaged by another mob or a player. Useful for mob behavior, damage tracking, or event triggers.
+

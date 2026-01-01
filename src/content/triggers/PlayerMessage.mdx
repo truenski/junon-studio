@@ -1,0 +1,22 @@
+---
+id: PlayerMessage
+name: PlayerMessage
+description: Event triggered when a player sends a chat message
+lang: en
+variables:
+  - name: player
+    type: string
+    description: The username of the player who sent the message
+  - name: message
+    type: string
+    description: The message that was sent
+examples:
+  - code: |
+      if PlayerMessage
+        if $message == "hello"
+          /chat $player "Hello, $player!"
+    description: Respond to specific chat messages
+---
+
+Triggered when a player sends a message in the chat. Can be used for command processing, chat filters, or automated responses.
+

@@ -1,0 +1,31 @@
+---
+id: GoldChanged
+name: GoldChanged
+description: Event triggered when gold changed
+lang: en
+variables:
+  - name: playerId
+    type: number
+    description: ID of player
+  - name: player
+    type: string
+    description: Username of player
+  - name: previous
+    type: number
+    description: Previous gold
+  - name: current
+    type: number
+    description: Current gold
+  - name: delta
+    type: number
+    description: Amount changed
+examples:
+  - code: |
+      if GoldChanged
+        if $current >= 1000
+          /chat $player "You reached 1000 gold!"
+    description: Announce gold milestones
+---
+
+Triggered when a player's gold changes. Useful for gold tracking, milestones, or economy systems.
+

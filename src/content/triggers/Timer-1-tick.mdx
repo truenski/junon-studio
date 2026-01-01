@@ -1,0 +1,18 @@
+---
+id: Timer-1-tick
+name: Timer:1:tick
+description: Event triggered on each tick of timer "1".
+lang: en
+variables:
+  - name: remaining
+    type: number
+    description: The remaining time in seconds
+examples:
+  - code: |
+      if Timer:1:tick
+        /sidebar set 2 "Timer 1: $remaining"
+    description: Display timer 1 countdown
+---
+
+Triggered every second while timer "1" is running.
+

@@ -1,0 +1,35 @@
+---
+id: path
+name: /path
+description: Create and manage paths for entities to follow.
+syntax:
+  - /path list
+  - /path set [name] [row,col] [row,col] [row,col] ...
+  - /path delete [name]
+  - /path rename [name] [newname]
+category: with-args
+lang: en
+args:
+  - name: name
+    type: string
+    required: false
+    description: The name of the path
+  - name: newname
+    type: string
+    required: false
+    description: The new name for the path
+  - name: row,col
+    type: string
+    required: false
+    description: Coordinate pairs in format "row col"
+examples:
+  - code: /path list
+    description: List all paths
+  - code: /path set patrol 50 37 57 37 57 43 47 43 47 50 57 50 57 60 47 60 47 54
+    description: Create a patrol path with multiple waypoints
+  - code: /path delete patrol
+    description: Delete the "patrol" path
+---
+
+Creates paths that entities can follow. Paths are defined by a series of coordinate waypoints.
+

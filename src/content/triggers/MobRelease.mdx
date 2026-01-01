@@ -1,0 +1,27 @@
+---
+id: MobRelease
+name: MobRelease
+description: Event triggered when a mob stops following a player.
+lang: en
+variables:
+  - name: entityId
+    type: number
+    description: The ID of the mob
+  - name: entityType
+    type: string
+    description: The type of mob
+  - name: playerId
+    type: number
+    description: The ID of the player
+  - name: player
+    type: string
+    description: The username of the player
+examples:
+  - code: |
+      if MobRelease
+        /chat $player "The $entityType stopped following you"
+    description: Notify player when mob stops following
+---
+
+Triggered when a mob stops following a player. Useful for follower management or pet systems.
+
