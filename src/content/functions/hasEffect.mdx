@@ -1,0 +1,22 @@
+---
+id: hasEffect
+name: hasEffect
+description: true if the entity, player, or building gets the specified effect. false if not
+syntax: $hasEffect($entityId, effectName)
+parameters:
+  - name: $entityId
+    type: string
+    required: true
+    description: The entityId parameter
+  - name: effectName
+    type: string
+    required: true
+    description: The effectName parameter
+returns: true if the entity, player, or building gets the specified effect. false if not
+examples:
+  - code: $hasEffect($player, speed)
+    description: Example usage of $hasEffect
+lang: en
+---
+
+true if the entity, player, or building gets the specified effect. false if not

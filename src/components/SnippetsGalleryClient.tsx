@@ -1,135 +1,13 @@
 import { useState } from "react";
-import { Copy, Check, Search, Tag, Code2 } from "lucide-react";
+import { Copy, Check, Search, Tag, Code2, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-
-const snippets = [
-  {
-    id: 1,
-    title: "Player Spawn System",
-    description: "Complete spawn system with random locations and starter items",
-    tags: ["spawn", "items", "beginner"],
-    code: `@trigger onPlayerJoin(player) {
-  // Random spawn selection
-  var spawns = getSpawnPoints()
-  var randomSpawn = spawns[random(0, spawns.length)]
-  
-  teleport(player, randomSpawn)
-  
-  // Starter kit
-  giveItem(player, "pistol", 1)
-  giveItem(player, "ammo", 30)
-  giveItem(player, "medkit", 2)
-  
-  sendMessage(player, "Welcome! Good luck!")
-}`,
-    author: "Community"
-  },
-  {
-    id: 2,
-    title: "Kill Streak Rewards",
-    description: "Award players for consecutive kills with special items",
-    tags: ["combat", "rewards", "intermediate"],
-    code: `@trigger onPlayerKill(killer, victim) {
-  global.streaks[killer.id] = (global.streaks[killer.id] || 0) + 1
-  var streak = global.streaks[killer.id]
-  
-  if (streak == 3) {
-    giveItem(killer, "speed_boost", 1)
-    broadcastMessage(killer.name + " is on fire! 3 kills!")
-  } else if (streak == 5) {
-    giveItem(killer, "shield", 1)
-    broadcastMessage(killer.name + " DOMINATING! 5 kills!")
-  } else if (streak >= 10) {
-    giveItem(killer, "super_weapon", 1)
-    broadcastMessage(killer.name + " UNSTOPPABLE!")
-  }
-}
-
-@trigger onPlayerDeath(player) {
-  global.streaks[player.id] = 0
-}`,
-    author: "ProCoder"
-  },
-  {
-    id: 3,
-    title: "Safe Zone Manager",
-    description: "Create and manage safe zones where players can't take damage",
-    tags: ["zones", "protection", "beginner"],
-    code: `@event onZoneEnter(player, zone) {
-  if (zone.type == "safe") {
-    setInvincible(player, true)
-    setEffect(player, "shield_glow", true)
-    sendMessage(player, "Entered safe zone")
-  }
-}
-
-@event onZoneExit(player, zone) {
-  if (zone.type == "safe") {
-    setInvincible(player, false)
-    setEffect(player, "shield_glow", false)
-    sendMessage(player, "Left safe zone - be careful!")
-  }
-}`,
-    author: "ZoneMaster"
-  },
-  {
-    id: 4,
-    title: "Team Balancer",
-    description: "Automatically balance teams when players join or leave",
-    tags: ["teams", "balance", "advanced"],
-    code: `@trigger onPlayerJoin(player) {
-  var teamA = getTeamPlayers("red")
-  var teamB = getTeamPlayers("blue")
-  
-  if (teamA.length <= teamB.length) {
-    setTeam(player, "red")
-    sendMessage(player, "You joined Red Team!")
-  } else {
-    setTeam(player, "blue")
-    sendMessage(player, "You joined Blue Team!")
-  }
-}
-
-@command /balance {
-  if (player.isAdmin) {
-    autoBalanceTeams()
-    broadcastMessage("Teams have been balanced!")
-  }
-}`,
-    author: "TeamLead"
-  },
-  {
-    id: 5,
-    title: "Timed Game Modes",
-    description: "Switch between different game modes on a timer",
-    tags: ["gamemode", "timer", "advanced"],
-    code: `@trigger onGameStart() {
-  global.modeIndex = 0
-  global.modes = ["deathmatch", "capture", "survival"]
-  
-  setGameMode(global.modes[0])
-  startModeTimer()
-}
-
-function startModeTimer() {
-  delay(300000) {  // 5 minutes
-    global.modeIndex = (global.modeIndex + 1) % global.modes.length
-    var newMode = global.modes[global.modeIndex]
-    
-    setGameMode(newMode)
-    broadcastMessage("Mode changed to: " + newMode)
-    
-    startModeTimer()  // Loop
-  }
-}`,
-    author: "GameDev"
-  }
-];
+import { snippets } from "@/lib/snippets";
 
 export function SnippetsGalleryClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [expandedSnippets, setExpandedSnippets] = useState<Set<number>>(new Set());
 
   const allTags = [...new Set(snippets.flatMap(s => s.tags))];
 
@@ -144,6 +22,18 @@ export function SnippetsGalleryClient() {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const toggleExpand = (id: number) => {
+    setExpandedSnippets(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   return (
@@ -199,7 +89,9 @@ export function SnippetsGalleryClient() {
         {filteredSnippets.map(snippet => (
           <div
             key={snippet.id}
-            className="glass-panel rounded-lg overflow-hidden neon-border hover:border-primary/50 transition-all group"
+            className={`glass-panel rounded-lg neon-border hover:border-primary/50 transition-all group ${
+              expandedSnippets.has(snippet.id) ? 'overflow-visible' : 'overflow-hidden'
+            }`}
           >
             {/* Card Header */}
             <div className="p-4 border-b border-border/30">
@@ -241,13 +133,39 @@ export function SnippetsGalleryClient() {
 
             {/* Code Preview */}
             <div className="relative">
-              <div className="absolute top-2 left-2 flex items-center gap-1 text-xs text-muted-foreground">
+              <div className="absolute top-2 left-2 flex items-center gap-1 text-xs text-muted-foreground z-10">
                 <Code2 className="w-3 h-3" />
                 <span>Preview</span>
               </div>
-              <pre className="p-4 pt-8 text-xs font-mono text-foreground/80 overflow-x-auto max-h-48 bg-muted/30">
-                {snippet.code}
-              </pre>
+              <div className="relative">
+                <pre 
+                  className={`p-4 pt-8 text-xs font-mono text-foreground/80 bg-muted/30 transition-all ${
+                    expandedSnippets.has(snippet.id) 
+                      ? 'max-h-none overflow-visible' 
+                      : 'max-h-48 overflow-x-auto overflow-y-auto'
+                  }`}
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word'
+                  }}
+                >
+                  {snippet.code}
+                </pre>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleExpand(snippet.id);
+                  }}
+                  className="absolute bottom-2 right-2 p-1.5 rounded bg-background/80 hover:bg-background border border-border/50 text-muted-foreground hover:text-foreground transition-colors z-10 shadow-sm"
+                  title={expandedSnippets.has(snippet.id) ? "Collapse" : "Expand"}
+                >
+                  {expandedSnippets.has(snippet.id) ? (
+                    <ChevronUp className="w-3 h-3" />
+                  ) : (
+                    <ChevronDown className="w-3 h-3" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         ))}

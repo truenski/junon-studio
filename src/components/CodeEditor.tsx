@@ -15,8 +15,14 @@ import {
   COMMANDS,
 } from "@/hooks/useJunonSyntax";
 import type { ValidationError } from "@/hooks/useJunonSyntax";
+import { saveFile, type TemporaryFile } from "@/lib/fileStorage";
 
-const defaultCode = `@trigger onPlayerJoin
+interface CodeEditorProps {
+  currentFile: TemporaryFile | null;
+  onFileChange?: (file: TemporaryFile) => void;
+}
+
+const defaultCode = `@trigger PlayerJoined
     @commands
         /chat Welcome to the game!
         /give sword 1
@@ -27,7 +33,7 @@ const defaultCode = `@trigger onPlayerJoin
     @timer 5000
         /chat 5 seconds passed`;
 
-export function CodeEditor() {
+export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) {
   const [code, setCode] = useState(defaultCode);
   const [fileName, setFileName] = useState("main");
   const [isEditingFileName, setIsEditingFileName] = useState(false);
@@ -56,6 +62,59 @@ export function CodeEditor() {
       editorRef.current.focus();
     }
   }, []);
+
+  // Initialize MDX data on mount
+  useEffect(() => {
+    initializeMDXData().catch(console.error);
+  }, []);
+
+  // Update code when current file changes
+  useEffect(() => {
+    if (currentFile) {
+      setCode(currentFile.content);
+      setFileName(currentFile.name);
+    }
+  }, [currentFile?.id]);
+
+  // Auto-save to localStorage with debounce
+  useEffect(() => {
+    if (!currentFile) return;
+    
+    const timeoutId = setTimeout(() => {
+      const updatedFile = { ...currentFile, content: code };
+      saveFile(updatedFile);
+      onFileChange?.(updatedFile);
+    }, 500); // Debounce 500ms
+
+    return () => clearTimeout(timeoutId);
+  }, [code, currentFile?.id, onFileChange]);
+
+  // Keyboard shortcut: Ctrl+S / Cmd+S to save
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        if (currentFile && errors.length === 0) {
+          const updatedFile = { ...currentFile, content: code };
+          saveFile(updatedFile);
+          onFileChange?.(updatedFile);
+          toast({
+            title: "Saved",
+            description: `File "${currentFile.name}" saved successfully`,
+          });
+        } else if (errors.length > 0) {
+          toast({
+            title: "Cannot save",
+            description: "Fix errors before saving",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [code, currentFile, errors.length, onFileChange, toast]);
 
   // Validate code on change
   useEffect(() => {
@@ -239,7 +298,7 @@ export function CodeEditor() {
     updateSuggestions();
   };
 
-  const handleQuickInsert = (text: string) => {
+  const handleQuickInsert = useCallback((text: string) => {
     const textarea = editorRef.current;
     if (!textarea) return;
     
@@ -274,10 +333,12 @@ export function CodeEditor() {
     setCode(newCode);
     
     setTimeout(() => {
-      textarea.selectionStart = textarea.selectionEnd = replaceStart + insertText.length;
-      textarea.focus();
+      if (textarea) {
+        textarea.selectionStart = textarea.selectionEnd = replaceStart + insertText.length;
+        textarea.focus();
+      }
     }, 0);
-  };
+  }, [code]);
 
   const getQuickSuggestions = () => {
     switch (suggestionType) {
@@ -303,6 +364,13 @@ export function CodeEditor() {
     setIsEditingFileName(false);
     if (!fileName.trim()) {
       setFileName("main");
+    }
+    
+    // Update file name in storage
+    if (currentFile) {
+      const updatedFile = { ...currentFile, name: fileName.trim() || "main" };
+      saveFile(updatedFile);
+      onFileChange?.(updatedFile);
     }
   };
 
@@ -384,7 +452,7 @@ export function CodeEditor() {
     <div className="flex flex-col h-full">
       {/* Editor Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border/50 glass-panel">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-4">
           {isEditingFileName ? (
             <div className="flex items-center">
               <input
@@ -425,7 +493,7 @@ export function CodeEditor() {
             </button>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mr-4">
           <Button 
             variant="ghost" 
             size="sm" 
@@ -451,7 +519,7 @@ export function CodeEditor() {
       {/* Code Area with Resizable Bottom Panel */}
       <ResizablePanelGroup direction="vertical" className="flex-1">
         <ResizablePanel defaultSize={100} minSize={30} maxSize={100}>
-          <div className="h-full relative overflow-hidden bg-background">
+          <div className="h-full relative overflow-auto bg-background">
         {/* Line numbers - fixed position */}
         <div 
           ref={lineNumbersRef}
@@ -476,7 +544,7 @@ export function CodeEditor() {
         {/* Code display layer */}
         <pre 
           ref={codeDisplayRef}
-          className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 whitespace-pre overflow-hidden pointer-events-none"
+          className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 whitespace-pre overflow-auto pointer-events-none"
           aria-hidden="true"
         >
           {code.split('\n').map((line, lineIndex) => (
@@ -494,7 +562,7 @@ export function CodeEditor() {
           onClick={handleClick}
           onKeyDown={handleKeyDown}
           onScroll={handleScroll}
-          className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 bg-transparent text-transparent caret-primary resize-none focus:outline-none overflow-auto z-20"
+          className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 bg-transparent text-transparent caret-primary resize-none focus:outline-none overflow-auto z-20 whitespace-pre"
           spellCheck={false}
           autoFocus
         />

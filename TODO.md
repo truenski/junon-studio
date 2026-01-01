@@ -1,0 +1,13 @@
+- match validations with functions/commands/args/actions
+- compile export extract extension 
+- shortcut functions
+- use "/" autocomplete
+- filter while typing @trigger action
+- snippet connect to supabase 
+- map mobs
+- map entities 
+- map native variables 
+- ads
+- enter should start at 0 col
+- ai code ask 
+- ai code adding from bottom quick tab (merge resolution)

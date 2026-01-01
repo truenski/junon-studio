@@ -1,0 +1,19 @@
+---
+id: getRole
+name: getRole
+description: Returns the name of the role that a player belongs to.
+syntax: $getRole($player)
+parameters:
+  - name: $player
+    type: string
+    required: true
+    description: The player to get role from
+returns: The name of role that player belongs to
+examples:
+  - code: /chat $player %success% Your role is $getRole($player)
+    description: Display player's role in chat
+lang: en
+---
+
+Returns the name of the role that a player belongs to. Useful for role-based game mechanics and permissions.
+

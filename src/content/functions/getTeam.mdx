@@ -1,0 +1,19 @@
+---
+id: getTeam
+name: getTeam
+description: Returns the name of the team a player belongs to.
+syntax: $getTeam($player)
+parameters:
+  - name: $player
+    type: string
+    required: true
+    description: The player to get team from
+returns: The name of team player belongs to
+examples:
+  - code: /chat $player %success% Your team is $getTeam($player)
+    description: Display player's team in chat
+lang: en
+---
+
+Returns the name of the team a player belongs to. Useful for team-based game modes and team identification.
+

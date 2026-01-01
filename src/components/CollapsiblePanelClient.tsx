@@ -23,8 +23,8 @@ export function CollapsiblePanelClient({ title, side, children }: CollapsiblePan
       {/* Toggle Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`absolute top-4 z-10 w-6 h-12 glass-panel neon-border flex items-center justify-center hover:bg-primary/10 transition-colors ${
-          side === "left" ? "-right-3" : "-left-3"
+        className={` absolute top-4 z-20 w-6 h-12 glass-panel neon-border flex items-center justify-center hover:bg-primary/10 transition-colors ${
+          side === "left" ? "-right-3" : "-left-[18px]"
         }`}
       >
         <ChevronIcon className="w-4 h-4 text-primary" />

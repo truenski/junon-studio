@@ -7,7 +7,7 @@ import AccordionItem from "@/components/AccordionItem.astro";
 
 const commands = await getCollection("commands");
 const triggers = await getCollection("triggers");
-const actions = await getCollection("actions");
+// const actions = await getCollection("actions"); // Actions documentation removed
 const functions = await getCollection("functions");
 const variables = await getCollection("variables");
 const mobs = await getCollection("mobs");
@@ -64,24 +64,24 @@ triggers.forEach((trigger) => {
   });
 });
 
-// Add actions
-actions.forEach((action) => {
-  const searchableText = [
-    action.data.name,
-    action.data.description,
-    ...(action.data.syntax || []),
-    ...(action.data.examples?.map((e: any) => `${e.code} ${e.description}`) || []),
-  ].join(" ").toLowerCase();
-  
-  allItems.push({
-    id: action.id,
-    title: action.data.name,
-    description: action.data.description,
-    content: action,
-    type: "action",
-    searchableText,
-  });
-});
+// Add actions - REMOVED: No actions documentation
+// actions.forEach((action) => {
+//   const searchableText = [
+//     action.data.name,
+//     action.data.description,
+//     ...(action.data.syntax || []),
+//     ...(action.data.examples?.map((e: any) => `${e.code} ${e.description}`) || []),
+//   ].join(" ").toLowerCase();
+//   
+//   allItems.push({
+//     id: action.id,
+//     title: action.data.name,
+//     description: action.data.description,
+//     content: action,
+//     type: "action",
+//     searchableText,
+//   });
+// });
 
 // Add functions
 functions.forEach((func) => {
@@ -166,7 +166,7 @@ entities.forEach((entity) => {
 const categories = [
   { id: "command", name: "Commands", count: commands.length },
   { id: "trigger", name: "Triggers", count: triggers.length },
-  { id: "action", name: "Actions", count: actions.length },
+  // { id: "action", name: "Actions", count: actions.length }, // Actions filter removed
   { id: "function", name: "Functions", count: functions.length },
   { id: "variable", name: "Variables", count: variables.length },
   { id: "mob", name: "Mobs", count: mobs.length },
@@ -186,7 +186,6 @@ const categories = [
         <p class="text-xs text-yellow-300 mt-2">
           Commands: {commands.length} | 
           Triggers: {triggers.length} | 
-          Actions: {actions.length} | 
           Functions: {functions.length} | 
           Variables: {variables.length} | 
           Mobs: {mobs.length} | 

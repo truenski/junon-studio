@@ -16,6 +16,9 @@ export default defineConfig({
     }),
     mdx(),
   ],
+  devToolbar: {
+    enabled: false,
+  },
   vite: {
     resolve: {
       alias: {

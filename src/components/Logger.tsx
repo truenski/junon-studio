@@ -1,5 +1,5 @@
 import { AlertCircle } from "lucide-react";
-import { ValidationError } from "@/hooks/useJunonSyntax";
+import type { ValidationError } from "@/hooks/useJunonSyntax";
 
 interface LoggerProps {
   errors: ValidationError[];
