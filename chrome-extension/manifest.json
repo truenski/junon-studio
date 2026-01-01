@@ -1,0 +1,52 @@
+{
+  "manifest_version": 3,
+  "name": "Junon.io Code Importer",
+  "version": "1.0.0",
+  "description": "Import code from Junon Code Editor to junon.io command blocks",
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting",
+    "tabs"
+  ],
+  "host_permissions": [
+    "*://junon.io/*",
+    "*://localhost/*",
+    "*://127.0.0.1/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://junon.io/*"],
+      "js": ["parser.js", "content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["*://localhost/*", "*://127.0.0.1/*"],
+      "js": ["editor-sync.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["parser.js"],
+      "matches": ["*://junon.io/*"]
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
+}
+

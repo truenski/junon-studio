@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Junon.io Code Importer</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Junon.io Importer</h1>
+      <button id="syncBtn" class="btn btn-primary">Sync from Editor</button>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="files">Local Files</button>
+      <button class="tab-btn" data-tab="snippets">Snippets</button>
+    </div>
+
+    <div id="filesTab" class="tab-content active">
+      <div class="section">
+        <h2>Your Files</h2>
+        <div id="filesList" class="list">
+          <div class="empty-state">No files found. Sync from editor first.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="snippetsTab" class="tab-content">
+      <div class="section">
+        <h2>Code Snippets</h2>
+        <div id="snippetsList" class="list">
+          <div class="empty-state">No snippets found. Sync from editor first.</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status" class="status hidden"></div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
+
