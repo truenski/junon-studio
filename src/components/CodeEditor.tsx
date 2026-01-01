@@ -47,14 +47,16 @@ export function CodeEditor() {
     setErrors(validationErrors);
   }, [code]);
 
-  // Update suggestions based on cursor position
-  const updateSuggestions = useCallback(() => {
+  // Update suggestions based on cursor position (only auto for @trigger)
+  const updateSuggestions = useCallback((forceShow = false) => {
     if (!editorRef.current) return;
     const cursorPos = editorRef.current.selectionStart;
     const context = getSuggestionContext(code, cursorPos);
     setSuggestions(context.suggestions);
     setSuggestionType(context.type);
-    setShowSuggestions(context.suggestions.length > 0);
+    // Only auto-show for trigger suggestions; others require manual trigger
+    const shouldAutoShow = context.type === 'trigger' && context.suggestions.length > 0;
+    setShowSuggestions(forceShow ? context.suggestions.length > 0 : shouldAutoShow);
     setSelectedSuggestionIndex(0);
   }, [code]);
 
@@ -162,6 +164,12 @@ export function CodeEditor() {
         textarea.selectionStart = textarea.selectionEnd = cursorPos + 4;
       }, 0);
     }
+
+    // Manual autocomplete trigger (Ctrl+Space or Alt+Space)
+    if (e.key === ' ' && (e.ctrlKey || e.altKey)) {
+      e.preventDefault();
+      updateSuggestions(true);
+    }
   };
 
   const insertSuggestion = (suggestion: string) => {
@@ -228,11 +236,9 @@ export function CodeEditor() {
     switch (suggestionType) {
       case 'trigger':
         return TRIGGER_EVENTS.slice(0, 4).map(e => ({ label: e, value: e }));
-      case 'command':
-        return COMMANDS.slice(0, 4).map(c => ({ label: c, value: c }));
       default:
         return [
-          { label: '@trigger', value: '@trigger ' },
+          { label: '@trigger', value: '\n@trigger ' },
           { label: '@commands', value: '\n    @commands\n        ' },
           { label: '@if', value: '\n    @if ' },
           { label: '@timer', value: '\n    @timer ' },
