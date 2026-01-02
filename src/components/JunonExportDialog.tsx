@@ -57,17 +57,34 @@ export function JunonExportDialog({ open, onOpenChange }: JunonExportDialogProps
       for (const file of files) {
         try {
           const fileResponse = await fetch(`/api/chrome-extension-files?file=${encodeURIComponent(file)}`);
-          if (!fileResponse.ok) continue;
+          if (!fileResponse.ok) {
+            console.warn(`Failed to fetch file ${file}: ${fileResponse.status}`);
+            continue;
+          }
           
           if (file.endsWith('.png') || file.endsWith('.ico')) {
             const blob = await fileResponse.blob();
             zip.file(file, blob);
           } else {
+            // Ensure text files are read as UTF-8, especially important for manifest.json
             const text = await fileResponse.text();
+            // For manifest.json, ensure it's valid JSON
+            if (file === 'manifest.json') {
+              try {
+                JSON.parse(text); // Validate JSON
+              } catch (e) {
+                console.error('Invalid JSON in manifest.json:', e);
+                throw new Error('manifest.json is invalid');
+              }
+            }
             zip.file(file, text);
           }
         } catch (error) {
           console.warn(`Failed to add file ${file}:`, error);
+          // Don't skip manifest.json - it's critical
+          if (file === 'manifest.json') {
+            throw new Error(`Failed to include manifest.json: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
         }
       }
 

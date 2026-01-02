@@ -53,19 +53,29 @@ export const GET: APIRoute = async ({ url }) => {
       return new Response('Invalid path', { status: 400 });
     }
     
-    const content = readFileSync(fullPath);
     const isBinary = filePath.endsWith('.png') || filePath.endsWith('.ico');
     
     if (isBinary) {
+      const content = readFileSync(fullPath);
       return new Response(content, {
         status: 200,
         headers: { 'Content-Type': 'application/octet-stream' },
       });
     }
     
+    // Read text files as UTF-8, especially important for manifest.json
+    const content = readFileSync(fullPath, 'utf-8');
+    const contentType = filePath.endsWith('.json') 
+      ? 'application/json; charset=utf-8'
+      : filePath.endsWith('.html')
+      ? 'text/html; charset=utf-8'
+      : filePath.endsWith('.js')
+      ? 'application/javascript; charset=utf-8'
+      : 'text/plain; charset=utf-8';
+    
     return new Response(content, {
       status: 200,
-      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+      headers: { 'Content-Type': contentType },
     });
   } catch (error) {
     console.error('Error serving extension file:', error);

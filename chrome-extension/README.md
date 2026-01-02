@@ -8,24 +8,41 @@ Chrome extension para importar e exportar código do Junon Code Editor para comm
 
 ### Passo 1: Preparar a Extensão
 
-1. Extraia todos os arquivos desta pasta `chrome-extension/` para um local de fácil acesso no seu computador
-2. Certifique-se de que todos os arquivos estão presentes:
-   - `manifest.json`
+1. **Baixe o arquivo ZIP** da extensão
+2. **Extraia todos os arquivos** para um local de fácil acesso no seu computador (ex: `C:\Users\SeuNome\Downloads\junon-extension\`)
+3. **IMPORTANTE**: Certifique-se de que todos os arquivos foram extraídos corretamente:
+   - `manifest.json` ← **Este arquivo é essencial!**
    - `popup.html`
    - `popup.js`
    - `content.js`
    - `background.js`
    - `junon_automation.js`
-   - Pasta `icons/` com os ícones
+   - Pasta `icons/` com os ícones (icon16.png, icon48.png, icon128.png)
 
-### Passo 2: Instalar no Chrome
+**Verificação rápida**: Abra a pasta extraída e confirme que o arquivo `manifest.json` está presente na raiz da pasta (não dentro de uma subpasta).
 
+### Passo 2: Instalar no Chrome ou Microsoft Edge
+
+#### Para Google Chrome:
 1. Abra o Google Chrome
 2. Vá para `chrome://extensions/` (ou Menu → Mais ferramentas → Extensões)
 3. Ative o **"Modo do desenvolvedor"** (Developer mode) no canto superior direito
 4. Clique em **"Carregar sem compactação"** (Load unpacked)
 5. Selecione a pasta `chrome-extension/` que você extraiu
 6. A extensão deve aparecer na lista de extensões instaladas
+
+#### Para Microsoft Edge:
+1. Abra o Microsoft Edge
+2. Vá para `edge://extensions/` (ou Menu → Extensões)
+3. Ative o **"Modo do desenvolvedor"** (Developer mode) no canto inferior esquerdo
+4. Clique em **"Carregar sem compactação"** (Load unpacked)
+5. Selecione a pasta `chrome-extension/` que você extraiu
+6. A extensão deve aparecer na lista de extensões instaladas
+
+**Importante**: Certifique-se de que:
+- Todos os arquivos foram extraídos corretamente
+- A pasta selecionada contém o arquivo `manifest.json` diretamente dentro dela
+- Não selecione um arquivo ZIP, mas sim a pasta descompactada
 
 ### Passo 3: Verificar Instalação
 
@@ -83,24 +100,44 @@ Chrome extension para importar e exportar código do Junon Code Editor para comm
 
 ## Solução de Problemas
 
+### Erro "Missing 'manifest_version' key" no Microsoft Edge
+Se você receber este erro ao tentar carregar a extensão no Edge:
+1. **Certifique-se de que extraiu TODOS os arquivos** da pasta ZIP
+2. **Verifique se o arquivo `manifest.json` está presente** na pasta raiz
+3. **Não selecione o arquivo ZIP**, mas sim a pasta descompactada
+4. **Verifique a codificação do arquivo**: O `manifest.json` deve estar em UTF-8
+5. **Tente recarregar a extensão**: Remova a extensão e carregue novamente
+6. **Verifique se não há espaços ou caracteres especiais** no nome da pasta
+
+**Passos detalhados para Edge:**
+1. Extraia o ZIP em uma pasta (ex: `C:\Users\SeuNome\Downloads\junon-extension\`)
+2. Abra o Edge e vá para `edge://extensions/`
+3. Ative "Modo do desenvolvedor" (canto inferior esquerdo)
+4. Clique em "Carregar sem compactação"
+5. Selecione a pasta que contém o `manifest.json` (não selecione um arquivo, mas a pasta inteira)
+
 ### A extensão não aparece
 - Verifique se o "Modo do desenvolvedor" está ativado
-- Recarregue a página de extensões (`chrome://extensions/`)
+- Recarregue a página de extensões (`chrome://extensions/` ou `edge://extensions/`)
 - Verifique se todos os arquivos estão na pasta correta
+- No Edge, verifique se a extensão não foi bloqueada por políticas de segurança
 
 ### "Receiving end does not exist" erro
 - Recarregue a página do junon.io (F5 ou Ctrl+R)
 - Certifique-se de estar na página `junon.io` (não localhost)
 - Verifique se a extensão está habilitada
+- No Edge, verifique se as permissões da extensão estão ativas
 
 ### A automação não funciona
 - Certifique-se de que o código JSON está no formato correto
 - Verifique se o menu de command blocks está aberto no junon.io
 - Tente recarregar a página do junon.io
+- No Edge, verifique se os scripts de conteúdo estão sendo injetados (use DevTools)
 
 ### Os ícones não aparecem
 - Verifique se os arquivos de ícone estão na pasta `icons/`
 - Os ícones devem ser `.png` (16x16, 48x48, 128x128 pixels)
+- Verifique se os caminhos no `manifest.json` estão corretos
 
 ## Desenvolvimento
 
