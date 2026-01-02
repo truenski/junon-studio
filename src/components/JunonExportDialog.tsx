@@ -113,16 +113,7 @@ export function JunonExportDialog({ open, onOpenChange }: JunonExportDialogProps
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Temporary Solution Notice */}
-          <div className="bg-muted/50 border border-primary/20 rounded-lg p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-primary mt-0.5 shrink-0" />
-            <div className="flex-1">
-              <p className="font-semibold text-sm mb-1">Temporary Solution</p>
-              <p className="text-sm text-muted-foreground">
-                This is a temporary solution. Soon the extension will be available on the Chrome Web Store for one-click install, without developer mode needed.
-              </p>
-            </div>
-          </div>
+         
 
           {/* Explanation */}
           <div className="space-y-3">

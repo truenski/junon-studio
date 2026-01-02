@@ -5,15 +5,17 @@ import { getCommandNames, getTriggerNames, getFunctionNames, type MDXCommand, ty
 export let TRIGGER_EVENTS: readonly string[] = [] as const;
 export let COMMANDS: readonly string[] = [] as const;
 export let FUNCTIONS: readonly string[] = [] as const;
+export let VARIABLES: readonly string[] = [] as const;
 
 // MDX data cache
 let mdxCommands: MDXCommand[] = [];
 let mdxTriggers: MDXTrigger[] = [];
+let mdxVariables: Array<{ name: string }> = [];
 
 // Initialize MDX data (call this from CodeEditor on mount)
 export async function initializeMDXData() {
   try {
-    const [commandNames, triggerNames, functionNames, { getCommands, getTriggers }] = await Promise.all([
+    const [commandNames, triggerNames, functionNames, { getCommands, getTriggers, getVariables }] = await Promise.all([
       getCommandNames(),
       getTriggerNames(),
       getFunctionNames(),
@@ -25,6 +27,8 @@ export async function initializeMDXData() {
     FUNCTIONS = functionNames as any;
     mdxCommands = await getCommands();
     mdxTriggers = await getTriggers();
+    mdxVariables = await getVariables();
+    VARIABLES = mdxVariables.map(v => v.name) as any;
   } catch (error) {
     console.error('Failed to initialize MDX data:', error);
     // Fallback to default values
@@ -46,6 +50,7 @@ export async function initializeMDXData() {
       '$getGold',
       '$getScore',
     ] as const;
+    VARIABLES = [] as const;
   }
 }
 
@@ -77,7 +82,7 @@ export interface ValidationError {
 }
 
 export interface SuggestionContext {
-  type: 'trigger' | 'command' | 'condition' | 'operator' | 'function' | 'none';
+  type: 'trigger' | 'command' | 'condition' | 'operator' | 'function' | 'variable' | 'none';
   suggestions: string[];
 }
 
@@ -106,16 +111,31 @@ export function validateJunonCode(code: string): ValidationError[] {
   const errors: ValidationError[] = [];
   const lines = code.split('\n');
   
+  // Track variables declared with /variable set
+  const declaredVariables = new Set<string>();
+  // Track trigger variables from MDX data
+  const triggerVariables = new Map<string, Set<string>>();
+  
+  // Extract variables from trigger MDX data
+  mdxTriggers.forEach(trigger => {
+    const vars = new Set<string>();
+    trigger.variables?.forEach(v => vars.add(v.name));
+    triggerVariables.set(trigger.name, vars);
+  });
+  
   // Recursive validation function
   const validateBlock = (
     startIndex: number,
     endIndex: number,
     baseIndent: number,
     inTrigger: boolean,
-    context: 'trigger' | 'then' | 'else'
+    context: 'trigger' | 'then' | 'else',
+    triggerName?: string
   ): number => {
     let i = startIndex;
-    let currentCondition: { lineIndex: number; indent: number; hasThen: boolean; hasElse: boolean } | null = null;
+    let currentCondition: { lineIndex: number; indent: number; hasThen: boolean; hasElse: boolean; thenContent?: string } | null = null;
+    let commandCount = 0; // Track commands without @commands
+    let hasCommandsBlock = false;
     
     while (i < endIndex && i < lines.length) {
       const line = lines[i];
@@ -149,6 +169,8 @@ export function validateJunonCode(code: string): ValidationError[] {
             message: '@commands must be indented inside its parent block'
           });
         }
+        
+        hasCommandsBlock = true;
         i++;
         // Validate commands inside @commands block
         while (i < endIndex && i < lines.length) {
@@ -161,6 +183,7 @@ export function validateJunonCode(code: string): ValidationError[] {
           const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
           if (cmdIndent <= baseIndent) break;
           if (cmdTrimmed.startsWith('/')) {
+            // Validate command
             const validCommand = COMMANDS.length === 0 || COMMANDS.some(cmd => cmdTrimmed.startsWith(cmd));
             if (!validCommand && COMMANDS.length > 0) {
               const cmdMatch = cmdTrimmed.match(/^(\/\w+)/);
@@ -172,6 +195,33 @@ export function validateJunonCode(code: string): ValidationError[] {
                   message: `Unknown command: ${cmdMatch[1]}`
                 });
               }
+            }
+            
+            // Extract and validate variables
+            const variableMatches = cmdTrimmed.matchAll(/\$(\w+)/g);
+            for (const match of variableMatches) {
+              const varName = match[1];
+              // Check if it's a function call (e.g., $getHealth($player))
+              if (varName.includes('(')) continue;
+              
+              // Check if variable is declared or is a trigger variable
+              const isDeclared = declaredVariables.has(varName);
+              const isTriggerVar = triggerName && triggerVariables.get(triggerName)?.has(varName);
+              
+              if (!isDeclared && !isTriggerVar && !FUNCTIONS.some(f => f.startsWith(`$${varName}`))) {
+                errors.push({
+                  line: i,
+                  column: cmdTrimmed.indexOf(`$${varName}`),
+                  length: varName.length + 1,
+                  message: `Unknown variable: $${varName}. Declare it with /variable set or check trigger variables.`
+                });
+              }
+            }
+            
+            // Check for /variable set to track declared variables
+            const varSetMatch = cmdTrimmed.match(/\/variable\s+set\s+(\w+)/);
+            if (varSetMatch) {
+              declaredVariables.add(varSetMatch[1]);
             }
           } else {
             break;
@@ -222,8 +272,38 @@ export function validateJunonCode(code: string): ValidationError[] {
       // then validation
       if (trimmed.startsWith('then') && currentCondition && indent > currentCondition.indent) {
         currentCondition.hasThen = true;
+        const thenMatch = trimmed.match(/then\s+(.+)/);
+        if (thenMatch) {
+          const thenContent = thenMatch[1].trim();
+          currentCondition.thenContent = thenContent;
+          
+          // Validate that then has @commands, @if, or @timer
+          if (!thenContent.startsWith('@commands') && !thenContent.startsWith('@if') && !thenContent.startsWith('@timer') && !thenContent.startsWith('/')) {
+            errors.push({
+              line: i,
+              column: trimmed.indexOf('then') + 4,
+              length: thenContent.length,
+              message: 'then clause must specify @commands, @if, or @timer'
+            });
+          }
+        } else {
+          // then on its own line - check next line
+          if (i + 1 < endIndex) {
+            const nextLine = lines[i + 1];
+            const nextTrimmed = nextLine.trim();
+            if (!nextTrimmed.startsWith('@commands') && !nextTrimmed.startsWith('@if') && !nextTrimmed.startsWith('@timer')) {
+              errors.push({
+                line: i,
+                column: 0,
+                length: 4,
+                message: 'then clause must be followed by @commands, @if, or @timer'
+              });
+            }
+          }
+        }
+        
         // Validate then block recursively
-        const thenEnd = validateBlock(i + 1, endIndex, indent, inTrigger, 'then');
+        const thenEnd = validateBlock(i + 1, endIndex, indent, inTrigger, 'then', triggerName);
         i = thenEnd;
         continue;
       }
@@ -231,8 +311,37 @@ export function validateJunonCode(code: string): ValidationError[] {
       // else validation
       if (trimmed.startsWith('else') && !trimmed.startsWith('elseif') && currentCondition && indent > currentCondition.indent) {
         currentCondition.hasElse = true;
+        const elseMatch = trimmed.match(/else\s+(.+)/);
+        if (elseMatch) {
+          const elseContent = elseMatch[1].trim();
+          
+          // Validate that else has @commands, @if, or @timer
+          if (!elseContent.startsWith('@commands') && !elseContent.startsWith('@if') && !elseContent.startsWith('@timer') && !elseContent.startsWith('/')) {
+            errors.push({
+              line: i,
+              column: trimmed.indexOf('else') + 4,
+              length: elseContent.length,
+              message: 'else clause must specify @commands, @if, or @timer'
+            });
+          }
+        } else {
+          // else on its own line - check next line
+          if (i + 1 < endIndex) {
+            const nextLine = lines[i + 1];
+            const nextTrimmed = nextLine.trim();
+            if (!nextTrimmed.startsWith('@commands') && !nextTrimmed.startsWith('@if') && !nextTrimmed.startsWith('@timer')) {
+              errors.push({
+                line: i,
+                column: 0,
+                length: 4,
+                message: 'else clause must be followed by @commands, @if, or @timer'
+              });
+            }
+          }
+        }
+        
         // Validate else block recursively
-        const elseEnd = validateBlock(i + 1, endIndex, indent, inTrigger, 'else');
+        const elseEnd = validateBlock(i + 1, endIndex, indent, inTrigger, 'else', triggerName);
         i = elseEnd;
         continue;
       }
@@ -268,8 +377,21 @@ export function validateJunonCode(code: string): ValidationError[] {
         continue;
       }
       
-      // Command validation
+      // Command validation (outside @commands block)
       if (trimmed.startsWith('/') && trimmed.length > 1) {
+        // Check if command is outside @commands block
+        if (context === 'trigger' && !hasCommandsBlock) {
+          commandCount++;
+          if (commandCount > 1) {
+            errors.push({
+              line: i,
+              column: 0,
+              length: trimmed.length,
+              message: 'Multiple commands found without @commands block. Wrap commands in @commands block.'
+            });
+          }
+        }
+        
         const validCommand = COMMANDS.length === 0 || COMMANDS.some(cmd => trimmed.startsWith(cmd));
         if (!validCommand && COMMANDS.length > 0) {
           const cmdMatch = trimmed.match(/^(\/\w+)/);
@@ -282,6 +404,34 @@ export function validateJunonCode(code: string): ValidationError[] {
             });
           }
         }
+        
+        // Extract and validate variables
+        const variableMatches = trimmed.matchAll(/\$(\w+)/g);
+        for (const match of variableMatches) {
+          const varName = match[1];
+          // Check if it's a function call (e.g., $getHealth($player))
+          if (varName.includes('(')) continue;
+          
+          // Check if variable is declared or is a trigger variable
+          const isDeclared = declaredVariables.has(varName);
+          const isTriggerVar = triggerName && triggerVariables.get(triggerName)?.has(varName);
+          
+          if (!isDeclared && !isTriggerVar && !FUNCTIONS.some(f => f.startsWith(`$${varName}`))) {
+            errors.push({
+              line: i,
+              column: trimmed.indexOf(`$${varName}`),
+              length: varName.length + 1,
+              message: `Unknown variable: $${varName}. Declare it with /variable set or check trigger variables.`
+            });
+          }
+        }
+        
+        // Check for /variable set to track declared variables
+        const varSetMatch = trimmed.match(/\/variable\s+set\s+(\w+)/);
+        if (varSetMatch) {
+          declaredVariables.add(varSetMatch[1]);
+        }
+        
         i++;
         continue;
       }
@@ -305,6 +455,7 @@ export function validateJunonCode(code: string): ValidationError[] {
   // Main validation loop
   let inTrigger = false;
   let triggerIndent = 0;
+  let currentTriggerName: string | undefined;
   
   lines.forEach((line, lineIndex) => {
     const trimmed = line.trim();
@@ -321,6 +472,7 @@ export function validateJunonCode(code: string): ValidationError[] {
       const match = trimmed.match(/@trigger\s+(\w+)/);
       if (match) {
         const eventName = match[1];
+        currentTriggerName = eventName;
         if (TRIGGER_EVENTS.length > 0 && !TRIGGER_EVENTS.includes(eventName)) {
           const triggerStart = trimmed.indexOf('@trigger');
           const eventStart = trimmed.indexOf(eventName, triggerStart + 8);
@@ -337,7 +489,15 @@ export function validateJunonCode(code: string): ValidationError[] {
       triggerIndent = indent;
       
       // Validate trigger block recursively
-      validateBlock(lineIndex + 1, lines.length, triggerIndent, true, 'trigger');
+      validateBlock(lineIndex + 1, lines.length, triggerIndent, true, 'trigger', currentTriggerName);
+    } else if (!inTrigger && (trimmed.startsWith('@commands') || trimmed.startsWith('@if') || trimmed.startsWith('@timer') || trimmed.startsWith('/'))) {
+      // Action without trigger
+      errors.push({
+        line: lineIndex,
+        column: 0,
+        length: trimmed.length,
+        message: 'Actions must be inside a @trigger block'
+      });
     }
     
     // Check for @event (deprecated)
@@ -368,7 +528,7 @@ export function convertJunonToJSON(code: string): JunonCodeJSON {
   const triggers: TriggerBlock[] = [];
   const lines = code.split('\n');
   
-  // Recursive function to parse actions within a block (then/else or top-level)
+  // Recursive function to parse actions within a block
   const parseActions = (
     startIndex: number,
     endIndex: number,
@@ -376,46 +536,6 @@ export function convertJunonToJSON(code: string): JunonCodeJSON {
     parentActions: Action[]
   ): number => {
     let i = startIndex;
-    let currentCommands: string[] = [];
-    let inCommands = false;
-    let currentCondition: { condition: string; then: Action[]; else: Action[]; ifIndent: number } | null = null;
-    let inThen = false;
-    let inElse = false;
-    let thenIndent = 0;
-    let elseIndent = 0;
-    
-    const flushCommands = () => {
-      if (currentCommands.length > 0) {
-        const action: Action = {
-          type: "command",
-          values: [...currentCommands]
-        };
-        if (inThen && currentCondition) {
-          currentCondition.then.push(action);
-        } else if (inElse && currentCondition) {
-          currentCondition.else.push(action);
-        } else {
-          parentActions.push(action);
-        }
-        currentCommands = [];
-      }
-    };
-    
-    const flushCondition = () => {
-      if (currentCondition) {
-        flushCommands();
-        const action: Action = {
-          type: "ifthenelse",
-          condition: currentCondition.condition,
-          then: currentCondition.then.length > 0 ? currentCondition.then : undefined,
-          else: currentCondition.else.length > 0 ? currentCondition.else : undefined
-        };
-        parentActions.push(action);
-        currentCondition = null;
-        inThen = false;
-        inElse = false;
-      }
-    };
     
     while (i < endIndex && i < lines.length) {
       const line = lines[i];
@@ -427,21 +547,438 @@ export function convertJunonToJSON(code: string): JunonCodeJSON {
       
       const indent = line.length - line.trimStart().length;
       
-      // Check if we've left this block (indent <= baseIndent and not empty)
+      // Check if we've left this block
       if (indent <= baseIndent && trimmed.length > 0) {
         break;
       }
       
+      // @if condition - create structure but wait for then/else
+      if (trimmed.startsWith('@if') && indent > baseIndent) {
+        const conditionMatch = trimmed.match(/@if\s+(.+)/);
+        if (conditionMatch) {
+          const condition = conditionMatch[1].trim();
+          const ifIndent = indent;
+          i++;
+          
+          // Parse then and else blocks
+          const thenActions: Action[] = [];
+          const elseActions: Action[] = [];
+          let hasThen = false;
+          let hasElse = false;
+          
+          // Look for then clause
+          while (i < endIndex && i < lines.length) {
+            const nextLine = lines[i];
+            const nextTrimmed = nextLine.trim();
+            if (nextTrimmed.length === 0) {
+              i++;
+              continue;
+            }
+            const nextIndent = nextLine.length - nextLine.trimStart().length;
+            
+            // If we've gone back to ifIndent or less, we're done with this if
+            if (nextIndent <= ifIndent && !nextTrimmed.startsWith('then') && !nextTrimmed.startsWith('else')) {
+              break;
+            }
+            
+            // Process then clause
+            if (nextTrimmed.startsWith('then') && nextIndent > ifIndent) {
+              hasThen = true;
+              const thenIndent = nextIndent;
+              const thenMatch = nextTrimmed.match(/then\s+(.+)/);
+              
+              if (thenMatch) {
+                const thenContent = thenMatch[1].trim();
+                
+                // then @commands
+                if (thenContent === '@commands' || thenContent.startsWith('@commands')) {
+                  i++;
+                  const commands: string[] = [];
+                  while (i < endIndex && i < lines.length) {
+                    const cmdLine = lines[i];
+                    const cmdTrimmed = cmdLine.trim();
+                    if (cmdTrimmed.length === 0) {
+                      i++;
+                      continue;
+                    }
+                    const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
+                    if (cmdIndent <= thenIndent) break;
+                    if (cmdTrimmed.startsWith('/')) {
+                      commands.push(cmdTrimmed);
+                    } else {
+                      break;
+                    }
+                    i++;
+                  }
+                  if (commands.length > 0) {
+                    thenActions.push({ type: "command", values: commands });
+                  }
+                }
+                // then @if (nested) - @if is on the same line as then
+                else if (thenContent.startsWith('@if')) {
+                  const nestedIfMatch = thenContent.match(/@if\s+(.+)/);
+                  if (nestedIfMatch) {
+                    // Create a nested if structure manually since @if is on same line
+                    const nestedCondition = nestedIfMatch[1].trim();
+                    i++;
+                    
+                    // Parse then/else for nested if
+                    const nestedThenActions: Action[] = [];
+                    const nestedElseActions: Action[] = [];
+                    const nestedIfIndent = thenIndent;
+                    
+                    // Look for then/else of nested if
+                    while (i < endIndex && i < lines.length) {
+                      const nestedLine = lines[i];
+                      const nestedTrimmed = nestedLine.trim();
+                      if (nestedTrimmed.length === 0) {
+                        i++;
+                        continue;
+                      }
+                      const nestedLineIndent = nestedLine.length - nestedLine.trimStart().length;
+                      
+                      if (nestedLineIndent <= nestedIfIndent) break;
+                      
+                      // Process nested then
+                      if (nestedTrimmed.startsWith('then') && nestedLineIndent > nestedIfIndent) {
+                        const nestedThenIndent = nestedLineIndent;
+                        const nestedThenMatch = nestedTrimmed.match(/then\s+(.+)/);
+                        
+                        if (nestedThenMatch) {
+                          const nestedThenContent = nestedThenMatch[1].trim();
+                          if (nestedThenContent === '@commands' || nestedThenContent.startsWith('@commands')) {
+                            i++;
+                            const commands: string[] = [];
+                            while (i < endIndex && i < lines.length) {
+                              const cmdLine = lines[i];
+                              const cmdTrimmed = cmdLine.trim();
+                              if (cmdTrimmed.length === 0) {
+                                i++;
+                                continue;
+                              }
+                              const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
+                              if (cmdIndent <= nestedThenIndent) break;
+                              if (cmdTrimmed.startsWith('/')) {
+                                commands.push(cmdTrimmed);
+                              } else {
+                                break;
+                              }
+                              i++;
+                            }
+                            if (commands.length > 0) {
+                              nestedThenActions.push({ type: "command", values: commands });
+                            }
+                          } else if (nestedThenContent.startsWith('/')) {
+                            nestedThenActions.push({ type: "command", values: [nestedThenContent] });
+                            i++;
+                          }
+                        } else {
+                          i++;
+                          const nestedThenEnd = parseActions(i, endIndex, nestedThenIndent, nestedThenActions);
+                          i = nestedThenEnd;
+                        }
+                        continue;
+                      }
+                      
+                      // Process nested else
+                      if (nestedTrimmed.startsWith('else') && !nestedTrimmed.startsWith('elseif') && nestedLineIndent > nestedIfIndent) {
+                        const nestedElseIndent = nestedLineIndent;
+                        const nestedElseMatch = nestedTrimmed.match(/else\s+(.+)/);
+                        
+                        if (nestedElseMatch) {
+                          const nestedElseContent = nestedElseMatch[1].trim();
+                          if (nestedElseContent === '@commands' || nestedElseContent.startsWith('@commands')) {
+                            i++;
+                            const commands: string[] = [];
+                            while (i < endIndex && i < lines.length) {
+                              const cmdLine = lines[i];
+                              const cmdTrimmed = cmdLine.trim();
+                              if (cmdTrimmed.length === 0) {
+                                i++;
+                                continue;
+                              }
+                              const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
+                              if (cmdIndent <= nestedElseIndent) break;
+                              if (cmdTrimmed.startsWith('/')) {
+                                commands.push(cmdTrimmed);
+                              } else {
+                                break;
+                              }
+                              i++;
+                            }
+                            if (commands.length > 0) {
+                              nestedElseActions.push({ type: "command", values: commands });
+                            }
+                          } else if (nestedElseContent.startsWith('/')) {
+                            nestedElseActions.push({ type: "command", values: [nestedElseContent] });
+                            i++;
+                          }
+                        } else {
+                          i++;
+                          const nestedElseEnd = parseActions(i, endIndex, nestedElseIndent, nestedElseActions);
+                          i = nestedElseEnd;
+                        }
+                        continue;
+                      }
+                      
+                      if (nestedLineIndent <= nestedIfIndent) break;
+                      i++;
+                    }
+                    
+                    // Create nested ifthenelse
+                    const nestedIfAction: Action = {
+                      type: "ifthenelse",
+                      condition: nestedCondition,
+                      then: nestedThenActions.length > 0 ? nestedThenActions : undefined,
+                      else: nestedElseActions.length > 0 ? nestedElseActions : undefined
+                    };
+                    thenActions.push(nestedIfAction);
+                  }
+                }
+                // then @timer
+                else if (thenContent.startsWith('@timer')) {
+                  const timerMatch = thenContent.match(/@timer\s+(\w+)\s+(\d+)\s+(\d+)/);
+                  if (timerMatch) {
+                    thenActions.push({
+                      type: "timer",
+                      name: timerMatch[1],
+                      duration: parseInt(timerMatch[2], 10),
+                      tick: parseInt(timerMatch[3], 10)
+                    });
+                  }
+                  i++;
+                }
+                // then /command (inline)
+                else if (thenContent.startsWith('/')) {
+                  thenActions.push({ type: "command", values: [thenContent] });
+                  i++;
+                }
+                // then without content - parse block
+                else {
+                  i++;
+                  const thenEnd = parseActions(i, endIndex, thenIndent, thenActions);
+                  i = thenEnd;
+                }
+              } else {
+                // then on its own line - parse block
+                i++;
+                const thenEnd = parseActions(i, endIndex, nextIndent, thenActions);
+                i = thenEnd;
+              }
+              continue;
+            }
+            
+            // Process else clause
+            if (nextTrimmed.startsWith('else') && !nextTrimmed.startsWith('elseif') && nextIndent > ifIndent) {
+              hasElse = true;
+              const elseIndent = nextIndent;
+              const elseMatch = nextTrimmed.match(/else\s+(.+)/);
+              
+              if (elseMatch) {
+                const elseContent = elseMatch[1].trim();
+                
+                // else @commands
+                if (elseContent === '@commands' || elseContent.startsWith('@commands')) {
+                  i++;
+                  const commands: string[] = [];
+                  while (i < endIndex && i < lines.length) {
+                    const cmdLine = lines[i];
+                    const cmdTrimmed = cmdLine.trim();
+                    if (cmdTrimmed.length === 0) {
+                      i++;
+                      continue;
+                    }
+                    const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
+                    if (cmdIndent <= elseIndent) break;
+                    if (cmdTrimmed.startsWith('/')) {
+                      commands.push(cmdTrimmed);
+                    } else {
+                      break;
+                    }
+                    i++;
+                  }
+                  if (commands.length > 0) {
+                    elseActions.push({ type: "command", values: commands });
+                  }
+                }
+                // else @if (nested) - @if is on the same line as else
+                else if (elseContent.startsWith('@if')) {
+                  const nestedIfMatch = elseContent.match(/@if\s+(.+)/);
+                  if (nestedIfMatch) {
+                    // Create a nested if structure manually since @if is on same line
+                    const nestedCondition = nestedIfMatch[1].trim();
+                    i++;
+                    
+                    // Parse then/else for nested if
+                    const nestedThenActions: Action[] = [];
+                    const nestedElseActions: Action[] = [];
+                    const nestedIfIndent = elseIndent;
+                    
+                    // Look for then/else of nested if
+                    while (i < endIndex && i < lines.length) {
+                      const nestedLine = lines[i];
+                      const nestedTrimmed = nestedLine.trim();
+                      if (nestedTrimmed.length === 0) {
+                        i++;
+                        continue;
+                      }
+                      const nestedLineIndent = nestedLine.length - nestedLine.trimStart().length;
+                      
+                      if (nestedLineIndent <= nestedIfIndent) break;
+                      
+                      // Process nested then
+                      if (nestedTrimmed.startsWith('then') && nestedLineIndent > nestedIfIndent) {
+                        const nestedThenIndent = nestedLineIndent;
+                        const nestedThenMatch = nestedTrimmed.match(/then\s+(.+)/);
+                        
+                        if (nestedThenMatch) {
+                          const nestedThenContent = nestedThenMatch[1].trim();
+                          if (nestedThenContent === '@commands' || nestedThenContent.startsWith('@commands')) {
+                            i++;
+                            const commands: string[] = [];
+                            while (i < endIndex && i < lines.length) {
+                              const cmdLine = lines[i];
+                              const cmdTrimmed = cmdLine.trim();
+                              if (cmdTrimmed.length === 0) {
+                                i++;
+                                continue;
+                              }
+                              const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
+                              if (cmdIndent <= nestedThenIndent) break;
+                              if (cmdTrimmed.startsWith('/')) {
+                                commands.push(cmdTrimmed);
+                              } else {
+                                break;
+                              }
+                              i++;
+                            }
+                            if (commands.length > 0) {
+                              nestedThenActions.push({ type: "command", values: commands });
+                            }
+                          } else if (nestedThenContent.startsWith('/')) {
+                            nestedThenActions.push({ type: "command", values: [nestedThenContent] });
+                            i++;
+                          }
+                        } else {
+                          i++;
+                          const nestedThenEnd = parseActions(i, endIndex, nestedThenIndent, nestedThenActions);
+                          i = nestedThenEnd;
+                        }
+                        continue;
+                      }
+                      
+                      // Process nested else
+                      if (nestedTrimmed.startsWith('else') && !nestedTrimmed.startsWith('elseif') && nestedLineIndent > nestedIfIndent) {
+                        const nestedElseIndent = nestedLineIndent;
+                        const nestedElseMatch = nestedTrimmed.match(/else\s+(.+)/);
+                        
+                        if (nestedElseMatch) {
+                          const nestedElseContent = nestedElseMatch[1].trim();
+                          if (nestedElseContent === '@commands' || nestedElseContent.startsWith('@commands')) {
+                            i++;
+                            const commands: string[] = [];
+                            while (i < endIndex && i < lines.length) {
+                              const cmdLine = lines[i];
+                              const cmdTrimmed = cmdLine.trim();
+                              if (cmdTrimmed.length === 0) {
+                                i++;
+                                continue;
+                              }
+                              const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
+                              if (cmdIndent <= nestedElseIndent) break;
+                              if (cmdTrimmed.startsWith('/')) {
+                                commands.push(cmdTrimmed);
+                              } else {
+                                break;
+                              }
+                              i++;
+                            }
+                            if (commands.length > 0) {
+                              nestedElseActions.push({ type: "command", values: commands });
+                            }
+                          } else if (nestedElseContent.startsWith('/')) {
+                            nestedElseActions.push({ type: "command", values: [nestedElseContent] });
+                            i++;
+                          }
+                        } else {
+                          i++;
+                          const nestedElseEnd = parseActions(i, endIndex, nestedElseIndent, nestedElseActions);
+                          i = nestedElseEnd;
+                        }
+                        continue;
+                      }
+                      
+                      if (nestedLineIndent <= nestedIfIndent) break;
+                      i++;
+                    }
+                    
+                    // Create nested ifthenelse
+                    const nestedIfAction: Action = {
+                      type: "ifthenelse",
+                      condition: nestedCondition,
+                      then: nestedThenActions.length > 0 ? nestedThenActions : undefined,
+                      else: nestedElseActions.length > 0 ? nestedElseActions : undefined
+                    };
+                    elseActions.push(nestedIfAction);
+                  }
+                }
+                // else @timer
+                else if (elseContent.startsWith('@timer')) {
+                  const timerMatch = elseContent.match(/@timer\s+(\w+)\s+(\d+)\s+(\d+)/);
+                  if (timerMatch) {
+                    elseActions.push({
+                      type: "timer",
+                      name: timerMatch[1],
+                      duration: parseInt(timerMatch[2], 10),
+                      tick: parseInt(timerMatch[3], 10)
+                    });
+                  }
+                  i++;
+                }
+                // else /command (inline)
+                else if (elseContent.startsWith('/')) {
+                  elseActions.push({ type: "command", values: [elseContent] });
+                  i++;
+                }
+                // else without content - parse block
+                else {
+                  i++;
+                  const elseEnd = parseActions(i, endIndex, elseIndent, elseActions);
+                  i = elseEnd;
+                }
+              } else {
+                // else on its own line - parse block
+                i++;
+                const elseEnd = parseActions(i, endIndex, nextIndent, elseActions);
+                i = elseEnd;
+              }
+              continue;
+            }
+            
+            // If we're here and haven't processed then/else, break
+            if (nextIndent <= ifIndent) {
+              break;
+            }
+            
+            i++;
+          }
+          
+          // Create ifthenelse action
+          const ifAction: Action = {
+            type: "ifthenelse",
+            condition: condition,
+            then: thenActions.length > 0 ? thenActions : undefined,
+            else: elseActions.length > 0 ? elseActions : undefined
+          };
+          parentActions.push(ifAction);
+        }
+        continue;
+      }
+      
       // @commands block
       if (trimmed.startsWith('@commands') && indent > baseIndent) {
-        flushCommands();
-        flushCondition();
-        inCommands = true;
-        inThen = false;
-        inElse = false;
-        currentCondition = null;
         i++;
-        // Collect commands until next block
+        const commands: string[] = [];
         while (i < endIndex && i < lines.length) {
           const cmdLine = lines[i];
           const cmdTrimmed = cmdLine.trim();
@@ -452,217 +989,20 @@ export function convertJunonToJSON(code: string): JunonCodeJSON {
           const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
           if (cmdIndent <= baseIndent) break;
           if (cmdTrimmed.startsWith('/')) {
-            currentCommands.push(cmdTrimmed);
+            commands.push(cmdTrimmed);
           } else {
             break;
           }
           i++;
         }
-        flushCommands();
-        inCommands = false;
+        if (commands.length > 0) {
+          parentActions.push({ type: "command", values: commands });
+        }
         continue;
       }
       
-      // @if condition
-      if (trimmed.startsWith('@if') && indent > baseIndent) {
-        flushCommands();
-        flushCondition();
-        inCommands = false;
-        inThen = false;
-        inElse = false;
-        const conditionMatch = trimmed.match(/@if\s+(.+)/);
-        if (conditionMatch) {
-          currentCondition = {
-            condition: conditionMatch[1].trim(),
-            then: [],
-            else: [],
-            ifIndent: indent
-          };
-        }
-        i++;
-        continue;
-      }
-      
-      // then clause
-      if (trimmed.startsWith('then') && currentCondition && indent > currentCondition.ifIndent) {
-        flushCommands();
-        inThen = true;
-        inElse = false;
-        thenIndent = indent;
-        
-        // Check if then has inline command or @commands/@if/@timer
-        const thenMatch = trimmed.match(/then\s+(.+)/);
-        if (thenMatch) {
-          const thenContent = thenMatch[1].trim();
-          if (thenContent.startsWith('/')) {
-            // Inline command
-            currentCondition.then.push({
-              type: "command",
-              values: [thenContent]
-            });
-            i++;
-            continue;
-          } else if (thenContent.startsWith('@commands')) {
-            // @commands in then
-            i++;
-            const thenCommands: string[] = [];
-            while (i < endIndex && i < lines.length) {
-              const cmdLine = lines[i];
-              const cmdTrimmed = cmdLine.trim();
-              if (cmdTrimmed.length === 0) {
-                i++;
-                continue;
-              }
-              const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
-              if (cmdIndent <= thenIndent) break;
-              if (cmdTrimmed.startsWith('/')) {
-                thenCommands.push(cmdTrimmed);
-              } else {
-                break;
-              }
-              i++;
-            }
-            if (thenCommands.length > 0) {
-              currentCondition.then.push({
-                type: "command",
-                values: thenCommands
-              });
-            }
-            continue;
-          } else if (thenContent.startsWith('@if')) {
-            // Nested @if in then
-            const nestedIfMatch = thenContent.match(/@if\s+(.+)/);
-            if (nestedIfMatch) {
-              const nestedActions: Action[] = [];
-              const nestedIfIndent = indent;
-              i++;
-              // Parse nested if recursively
-              const nestedEnd = parseActions(i, endIndex, nestedIfIndent, nestedActions);
-              if (nestedActions.length > 0) {
-                currentCondition.then.push(...nestedActions);
-              }
-              i = nestedEnd;
-              continue;
-            }
-          } else if (thenContent.startsWith('@timer')) {
-            // @timer in then
-            const timerMatch = thenContent.match(/@timer\s+(\w+)\s+(\d+)\s+(\d+)/);
-            if (timerMatch) {
-              currentCondition.then.push({
-                type: "timer",
-                name: timerMatch[1],
-                duration: parseInt(timerMatch[2], 10),
-                tick: parseInt(timerMatch[3], 10)
-              });
-              i++;
-              continue;
-            }
-          }
-        }
-        
-        // Parse then block content
-        i++;
-        const thenActions: Action[] = [];
-        const thenEnd = parseActions(i, endIndex, thenIndent, thenActions);
-        if (thenActions.length > 0) {
-          currentCondition.then.push(...thenActions);
-        }
-        i = thenEnd;
-        continue;
-      }
-      
-      // else clause
-      if (trimmed.startsWith('else') && !trimmed.startsWith('elseif') && currentCondition && indent > currentCondition.ifIndent) {
-        flushCommands();
-        inThen = false;
-        inElse = true;
-        elseIndent = indent;
-        
-        // Check if else has inline command or @commands/@if/@timer
-        const elseMatch = trimmed.match(/else\s+(.+)/);
-        if (elseMatch) {
-          const elseContent = elseMatch[1].trim();
-          if (elseContent.startsWith('/')) {
-            // Inline command
-            currentCondition.else.push({
-              type: "command",
-              values: [elseContent]
-            });
-            i++;
-            continue;
-          } else if (elseContent.startsWith('@commands')) {
-            // @commands in else
-            i++;
-            const elseCommands: string[] = [];
-            while (i < endIndex && i < lines.length) {
-              const cmdLine = lines[i];
-              const cmdTrimmed = cmdLine.trim();
-              if (cmdTrimmed.length === 0) {
-                i++;
-                continue;
-              }
-              const cmdIndent = cmdLine.length - cmdLine.trimStart().length;
-              if (cmdIndent <= elseIndent) break;
-              if (cmdTrimmed.startsWith('/')) {
-                elseCommands.push(cmdTrimmed);
-              } else {
-                break;
-              }
-              i++;
-            }
-            if (elseCommands.length > 0) {
-              currentCondition.else.push({
-                type: "command",
-                values: elseCommands
-              });
-            }
-            continue;
-          } else if (elseContent.startsWith('@if')) {
-            // Nested @if in else
-            const nestedIfMatch = elseContent.match(/@if\s+(.+)/);
-            if (nestedIfMatch) {
-              const nestedActions: Action[] = [];
-              const nestedIfIndent = indent;
-              i++;
-              // Parse nested if recursively
-              const nestedEnd = parseActions(i, endIndex, nestedIfIndent, nestedActions);
-              if (nestedActions.length > 0) {
-                currentCondition.else.push(...nestedActions);
-              }
-              i = nestedEnd;
-              continue;
-            }
-          } else if (elseContent.startsWith('@timer')) {
-            // @timer in else
-            const timerMatch = elseContent.match(/@timer\s+(\w+)\s+(\d+)\s+(\d+)/);
-            if (timerMatch) {
-              currentCondition.else.push({
-                type: "timer",
-                name: timerMatch[1],
-                duration: parseInt(timerMatch[2], 10),
-                tick: parseInt(timerMatch[3], 10)
-              });
-              i++;
-              continue;
-            }
-          }
-        }
-        
-        // Parse else block content
-        i++;
-        const elseActions: Action[] = [];
-        const elseEnd = parseActions(i, endIndex, elseIndent, elseActions);
-        if (elseActions.length > 0) {
-          currentCondition.else.push(...elseActions);
-        }
-        i = elseEnd;
-        continue;
-      }
-      
-      // @timer standalone (new format: @timer Name duration tick)
+      // @timer standalone
       if (trimmed.startsWith('@timer') && indent > baseIndent) {
-        flushCommands();
-        flushCondition();
         const timerMatch = trimmed.match(/@timer\s+(\w+)\s+(\d+)\s+(\d+)/);
         if (timerMatch) {
           parentActions.push({
@@ -676,35 +1016,16 @@ export function convertJunonToJSON(code: string): JunonCodeJSON {
         continue;
       }
       
-      // Command line
-      if (trimmed.startsWith('/') && trimmed.length > 1) {
-        if (inCommands) {
-          currentCommands.push(trimmed);
-        } else if (inThen && currentCondition) {
-          // Command directly in then block
-          currentCondition.then.push({
-            type: "command",
-            values: [trimmed]
-          });
-        } else if (inElse && currentCondition) {
-          // Command directly in else block
-          currentCondition.else.push({
-            type: "command",
-            values: [trimmed]
-          });
-        } else if (indent > baseIndent) {
-          // Command at top level of block
-          currentCommands.push(trimmed);
-        }
+      // Command line (should not be here if properly formatted)
+      if (trimmed.startsWith('/') && trimmed.length > 1 && indent > baseIndent) {
+        // This is an error case - command without @commands
+        parentActions.push({ type: "command", values: [trimmed] });
         i++;
         continue;
       }
       
       i++;
     }
-    
-    flushCommands();
-    flushCondition();
     
     return i;
   };
@@ -736,8 +1057,17 @@ export function convertJunonToJSON(code: string): JunonCodeJSON {
         const actions: Action[] = [];
         const endIndex = parseActions(i + 1, lines.length, triggerIndent, actions);
         currentTrigger.actions = actions;
-        i = endIndex - 1; // -1 because loop will increment
+        i = endIndex - 1;
       }
+    } else if (currentTrigger === null && trimmed.length > 0) {
+      // Action without trigger - this is an error but we'll still parse it
+      const actions: Action[] = [];
+      const endIndex = parseActions(i, lines.length, indent, actions);
+      if (actions.length > 0) {
+        // Create a dummy trigger for orphaned actions
+        triggers.push({ event: 'Unknown', actions });
+      }
+      i = endIndex - 1;
     }
   }
   
@@ -775,14 +1105,29 @@ export function getSuggestionContext(code: string, cursorPosition: number): Sugg
     }
   }
   
-  // Check if we're typing a function (starts with $)
+  // Check if we're typing a function or variable (starts with $)
   if (trimmed.startsWith('$')) {
     const partial = trimmed.match(/\$(\w*)$/)?.[1] || '';
-    const filtered = FUNCTIONS.filter(f => 
-      f.toLowerCase().startsWith(partial.toLowerCase())
+    
+    // Check for functions first (they include the $ in the name)
+    const filteredFunctions = FUNCTIONS.filter(f => 
+      f.toLowerCase().startsWith(`$${partial.toLowerCase()}`)
     );
-    if (filtered.length > 0) {
-      return { type: 'function', suggestions: filtered };
+    if (filteredFunctions.length > 0) {
+      return { type: 'function', suggestions: filteredFunctions };
+    }
+    
+    // Then check for variables (they don't include the $ in the name)
+    const filteredVariables = VARIABLES.filter(v => 
+      v.toLowerCase().startsWith(partial.toLowerCase())
+    );
+    if (filteredVariables.length > 0) {
+      return { type: 'variable', suggestions: filteredVariables.map(v => `$${v}`) };
+    }
+    
+    // If no matches, return functions as fallback
+    if (FUNCTIONS.length > 0) {
+      return { type: 'function', suggestions: FUNCTIONS.slice(0, 10) };
     }
   }
   

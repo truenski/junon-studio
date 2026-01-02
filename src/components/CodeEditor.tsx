@@ -28,9 +28,11 @@ const defaultCode = `@trigger PlayerJoined
         /chat Welcome to the game!
         /give sword 1
     @if player.health == 100
-        then /chat Player is at full health
+        then @commands
+            /chat Player is at full health
         else @if player.health != 100
-            then /heal player
+            then @commands
+                /heal player
     @timer WelcomeTimer 5000 1`;
 
 export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) {
@@ -326,7 +328,7 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
           { label: '@commands', value: '\n    @commands\n        ' },
           { 
             label: '@if', 
-            value: '\n    @if player.health == 100\n        then @commands\n            /chat Player is at full health\n        else @if player.health != 100\n            then /heal player' 
+            value: '\n    @if player.health == 100\n        then @commands\n            /chat Player is at full health\n        else @if player.health != 100\n            then @commands\n                /heal player' 
           },
           { 
             label: '@timer', 
