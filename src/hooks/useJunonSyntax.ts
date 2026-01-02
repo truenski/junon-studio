@@ -1,5 +1,5 @@
 // Junon syntax definitions and validation
-import { getCommandNames, getTriggerNames, getFunctionNames, type MDXCommand, type MDXTrigger } from '@/lib/mdxLoader';
+import { getCommandNames, getTriggerNames, getFunctionNames, type MDXCommand, type MDXTrigger, type MDXFunction, type MDXAction } from '@/lib/mdxLoader';
 
 // These will be populated dynamically from MDX data
 export let TRIGGER_EVENTS: readonly string[] = [] as const;
@@ -10,12 +10,14 @@ export let VARIABLES: readonly string[] = [] as const;
 // MDX data cache
 let mdxCommands: MDXCommand[] = [];
 let mdxTriggers: MDXTrigger[] = [];
+let mdxFunctions: MDXFunction[] = [];
+let mdxActions: MDXAction[] = [];
 let mdxVariables: Array<{ name: string }> = [];
 
 // Initialize MDX data (call this from CodeEditor on mount)
 export async function initializeMDXData() {
   try {
-    const [commandNames, triggerNames, functionNames, { getCommands, getTriggers, getVariables }] = await Promise.all([
+    const [commandNames, triggerNames, functionNames, { getCommands, getTriggers, getFunctions, getActions, getVariables }] = await Promise.all([
       getCommandNames(),
       getTriggerNames(),
       getFunctionNames(),
@@ -27,6 +29,8 @@ export async function initializeMDXData() {
     FUNCTIONS = functionNames as any;
     mdxCommands = await getCommands();
     mdxTriggers = await getTriggers();
+    mdxFunctions = await getFunctions();
+    mdxActions = await getActions();
     mdxVariables = await getVariables();
     VARIABLES = mdxVariables.map(v => v.name) as any;
   } catch (error) {
@@ -1164,6 +1168,32 @@ export function getTriggerExample(triggerName: string): string | null {
     return trigger.examples[0].code;
   }
   return null;
+}
+
+// Get complete command data from MDX cache
+export function getCommandData(commandName: string): MDXCommand | null {
+  // Remove leading / if present
+  const name = commandName.startsWith('/') ? commandName.slice(1) : commandName;
+  return mdxCommands.find(cmd => cmd.name === name || cmd.name === `/${name}`) || null;
+}
+
+// Get complete trigger data from MDX cache
+export function getTriggerData(triggerName: string): MDXTrigger | null {
+  return mdxTriggers.find(trg => trg.name === triggerName) || null;
+}
+
+// Get complete function data from MDX cache
+export function getFunctionData(functionName: string): MDXFunction | null {
+  // Remove leading $ if present
+  const name = functionName.startsWith('$') ? functionName.slice(1) : functionName;
+  return mdxFunctions.find(func => func.name === functionName || func.name === name || func.name === `$${name}`) || null;
+}
+
+// Get complete action data from MDX cache
+export function getActionData(actionName: string): MDXAction | null {
+  // Actions might be referenced by name without @ prefix
+  const name = actionName.startsWith('@') ? actionName.slice(1) : actionName;
+  return mdxActions.find(action => action.name === actionName || action.name === name || action.name === `@${name}`) || null;
 }
 
 export function getAutoIndent(code: string, cursorPosition: number): string {

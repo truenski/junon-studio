@@ -7,7 +7,8 @@ export interface Snippet {
   author: string;
 }
 
-export const snippets: Snippet[] = [
+// Default snippets (built-in)
+export const defaultSnippets: Snippet[] = [
   {
     id: 1,
     title: "Player Welcome System",
@@ -169,4 +170,14 @@ export const snippets: Snippet[] = [
     author: "Community"
   }
 ];
+
+// Legacy export for backwards compatibility
+export const snippets = defaultSnippets;
+
+// Function to get all snippets (default + Supabase)
+// This is a convenience function that re-exports from snippetService
+export async function getSnippets() {
+  const { getCombinedSnippets } = await import('./snippetService');
+  return getCombinedSnippets();
+}
 

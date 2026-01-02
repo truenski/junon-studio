@@ -1,11 +1,30 @@
 import { useState, useEffect } from "react";
-import { Copy, Check, Search } from "lucide-react";
+import { Copy, Check, Search, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { snippets } from "@/lib/snippets";
+import { getCombinedSnippets, type SnippetWithSource } from "@/lib/snippetService";
 
 export function QuickSnippetsClient() {
+  const [snippets, setSnippets] = useState<SnippetWithSource[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedId, setCopiedId] = useState<string | number | null>(null);
+
+  // Load snippets on mount
+  useEffect(() => {
+    const loadSnippets = async () => {
+      try {
+        const allSnippets = await getCombinedSnippets();
+        setSnippets(allSnippets);
+      } catch (error) {
+        console.error("Error loading snippets:", error);
+        setSnippets([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadSnippets();
+  }, []);
 
   useEffect(() => {
     const handleSnippetClick = (e: MouseEvent) => {
@@ -19,7 +38,17 @@ export function QuickSnippetsClient() {
       const snippetId = snippetItem.getAttribute('data-snippet-id');
       if (!snippetId) return;
 
-      const snippet = snippets.find(s => s.id === parseInt(snippetId));
+      // Find snippet by ID (can be string or number)
+      const snippet = snippets.find(s => {
+        if (typeof s.id === 'string' && typeof snippetId === 'string') {
+          return s.id === snippetId;
+        }
+        if (typeof s.id === 'number') {
+          return s.id.toString() === snippetId;
+        }
+        return false;
+      });
+      
       if (!snippet) return;
 
       // Dispatch custom event to CodeEditor
@@ -31,9 +60,9 @@ export function QuickSnippetsClient() {
 
     document.addEventListener('click', handleSnippetClick);
     return () => document.removeEventListener('click', handleSnippetClick);
-  }, []);
+  }, [snippets]);
 
-  const handleCopy = (e: React.MouseEvent, id: number, code: string) => {
+  const handleCopy = (e: React.MouseEvent, id: string | number, code: string) => {
     e.stopPropagation();
     navigator.clipboard.writeText(code);
     setCopiedId(id);
@@ -43,12 +72,20 @@ export function QuickSnippetsClient() {
   // Filter snippets based on search query
   const filteredSnippets = snippets.filter(snippet => {
     const matchesSearch = snippet.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          snippet.description.toLowerCase().includes(searchQuery.toLowerCase());
+                          (snippet.description || "").toLowerCase().includes(searchQuery.toLowerCase());
     return matchesSearch;
   });
 
   // Show filtered snippets (limit to 10 for quick panel)
   const displaySnippets = filteredSnippets.slice(0, 10);
+
+  if (loading) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <Loader2 className="w-4 h-4 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="h-full flex flex-col">
@@ -122,4 +159,3 @@ export function QuickSnippetsClient() {
     </div>
   );
 }
-

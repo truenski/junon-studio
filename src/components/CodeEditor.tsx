@@ -14,9 +14,15 @@ import {
   initializeMDXData,
   TRIGGER_EVENTS,
   COMMANDS,
+  getCommandData,
+  getTriggerData,
+  getFunctionData,
+  getActionData,
 } from "@/hooks/useJunonSyntax";
 import type { ValidationError } from "@/hooks/useJunonSyntax";
 import { saveFile, type TemporaryFile } from "@/lib/fileStorage";
+import { CodeTooltip } from "./CodeTooltip";
+import type { MDXCommand, MDXTrigger, MDXFunction, MDXAction } from "@/lib/mdxLoader";
 
 interface CodeEditorProps {
   currentFile?: TemporaryFile | null;
@@ -52,6 +58,11 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
   const [copied, setCopied] = useState(false);
   const [copiedJson, setCopiedJson] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [tooltipData, setTooltipData] = useState<MDXCommand | MDXTrigger | MDXFunction | MDXAction | null>(null);
+  const [tooltipType, setTooltipType] = useState<"command" | "trigger" | "function" | "action" | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const [hoveredToken, setHoveredToken] = useState<string | null>(null);
+  const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
   
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -438,6 +449,196 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
     }
   };
 
+  // Get token at mouse position
+  const getTokenAtPosition = useCallback((x: number, y: number): { token: string; type: "command" | "trigger" | "function" | "action" | null; startPos: number } | null => {
+    if (!codeDisplayRef.current || !editorRef.current) return null;
+    
+    const pre = codeDisplayRef.current;
+    const rect = pre.getBoundingClientRect();
+    const scrollTop = pre.scrollTop;
+    const scrollLeft = pre.scrollLeft;
+    
+    // Calculate relative position accounting for scroll
+    const relativeX = x - rect.left + scrollLeft;
+    const relativeY = y - rect.top + scrollTop;
+    
+    // Get line height (24px based on leading-6) and padding
+    const lineHeight = 24;
+    const paddingTop = 16; // pt-4
+    const paddingLeft = 56; // pl-14
+    
+    // Calculate line number
+    const lineNumber = Math.floor((relativeY - paddingTop) / lineHeight);
+    const lines = code.split('\n');
+    
+    if (lineNumber < 0 || lineNumber >= lines.length) return null;
+    
+    const line = lines[lineNumber];
+    if (!line) return null;
+    
+    // Calculate character position in line
+    // Approximate character width for monospace font at text-sm (typically 8.4px)
+    const charWidth = 8.4;
+    const charPosition = Math.floor((relativeX - paddingLeft) / charWidth);
+    
+    if (charPosition < 0 || charPosition > line.length) return null;
+    
+    // Find word boundaries - expand to include alphanumeric, $, /, @
+    let start = charPosition;
+    let end = charPosition;
+    
+    // Move start backwards to find word start
+    while (start > 0 && /[\w$\/@]/.test(line[start - 1])) {
+      start--;
+    }
+    
+    // Move end forwards to find word end
+    while (end < line.length && /[\w$\/@]/.test(line[end])) {
+      end++;
+    }
+    
+    const token = line.slice(start, end).trim();
+    if (!token) return null;
+    
+    // Identify token type and extract name
+    const trimmedLine = line.trim();
+    const lineBeforeToken = line.slice(0, start).trim();
+    
+    // Check for command (starts with /)
+    if (token.startsWith('/')) {
+      const commandName = token.split(/\s+/)[0];
+      return { token: commandName, type: "command", startPos: 0 };
+    }
+    
+    // Check for function (starts with $)
+    if (token.startsWith('$')) {
+      // Extract function name (might have parentheses)
+      const funcMatch = token.match(/^\$(\w+)/);
+      if (funcMatch) {
+        return { token: `$${funcMatch[1]}`, type: "function", startPos: 0 };
+      }
+    }
+    
+    // Check for trigger (after @trigger)
+    if (trimmedLine.startsWith('@trigger')) {
+      const triggerMatch = trimmedLine.match(/@trigger\s+(\w+)/);
+      if (triggerMatch && token === triggerMatch[1]) {
+        return { token: token, type: "trigger", startPos: 0 };
+      }
+    }
+    
+    // Check if token is part of a trigger line
+    if (lineBeforeToken.includes('@trigger')) {
+      const triggerMatch = trimmedLine.match(/@trigger\s+(\w+)/);
+      if (triggerMatch && token === triggerMatch[1]) {
+        return { token: token, type: "trigger", startPos: 0 };
+      }
+    }
+    
+    // Check for action keywords (@commands, @if, @timer)
+    if (token === '@commands' || token === '@if' || token === '@timer') {
+      return { token: token, type: "action", startPos: 0 };
+    }
+    
+    return null;
+  }, [code]);
+
+  // Identify token type and fetch data
+  const identifyTokenType = useCallback((token: string, type: "command" | "trigger" | "function" | "action" | null): { data: MDXCommand | MDXTrigger | MDXFunction | MDXAction | null; tooltipType: "command" | "trigger" | "function" | "action" | null } => {
+    if (!type) return { data: null, tooltipType: null };
+    
+    switch (type) {
+      case "command": {
+        const data = getCommandData(token);
+        return { data, tooltipType: "command" };
+      }
+      case "trigger": {
+        const data = getTriggerData(token);
+        return { data, tooltipType: "trigger" };
+      }
+      case "function": {
+        const data = getFunctionData(token);
+        return { data, tooltipType: "function" };
+      }
+      case "action": {
+        // For actions, we need to handle @commands, @if, @timer differently
+        // @commands is not really an action in MDX, but @if and @timer might be
+        const actionName = token.startsWith('@') ? token.slice(1) : token;
+        const data = getActionData(actionName);
+        return { data, tooltipType: "action" };
+      }
+      default:
+        return { data: null, tooltipType: null };
+    }
+  }, []);
+
+  // Handle mouse move on code display
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLPreElement>) => {
+    const result = getTokenAtPosition(e.clientX, e.clientY);
+    
+    if (result && result.token && result.type) {
+      const currentToken = `${result.type}:${result.token}`;
+      
+      // If hovering over the same token, don't reset timer
+      if (hoveredToken === currentToken) {
+        return;
+      }
+      
+      // Clear existing timer
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+      
+      // Reset tooltip
+      setTooltipData(null);
+      setTooltipType(null);
+      setTooltipPosition(null);
+      setHoveredToken(currentToken);
+      
+      // Set new timer for 1 second
+      hoverTimerRef.current = setTimeout(() => {
+        const { data, tooltipType } = identifyTokenType(result.token, result.type);
+        if (data && tooltipType) {
+          setTooltipData(data);
+          setTooltipType(tooltipType);
+          setTooltipPosition({ x: e.clientX, y: e.clientY });
+        }
+      }, 1000);
+    } else {
+      // No valid token, clear everything
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+        hoverTimerRef.current = null;
+      }
+      setHoveredToken(null);
+      setTooltipData(null);
+      setTooltipType(null);
+      setTooltipPosition(null);
+    }
+  }, [code, hoveredToken, getTokenAtPosition, identifyTokenType]);
+
+  // Handle mouse leave
+  const handleMouseLeave = useCallback(() => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    setHoveredToken(null);
+    setTooltipData(null);
+    setTooltipType(null);
+    setTooltipPosition(null);
+  }, []);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) {
+        clearTimeout(hoverTimerRef.current);
+      }
+    };
+  }, []);
+
   return (
     <div className="flex flex-col h-full">
       {/* Editor Header */}
@@ -565,6 +766,8 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
           onClick={handleClick}
           onKeyDown={handleKeyDown}
           onScroll={handleScroll}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
           className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 bg-transparent text-transparent caret-primary resize-none focus:outline-none overflow-auto z-20 whitespace-pre"
           spellCheck={false}
           autoFocus
@@ -705,6 +908,15 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
         open={exportDialogOpen}
         onOpenChange={setExportDialogOpen}
       />
+
+      {/* Code Tooltip */}
+      {tooltipPosition && tooltipData && tooltipType && (
+        <CodeTooltip
+          data={tooltipData}
+          type={tooltipType}
+          position={tooltipPosition}
+        />
+      )}
     </div>
   );
 }
