@@ -1,531 +1,447 @@
-// Popup script for Junon.io Code Importer
+/**
+ * Popup Script for Junon Automation Extension
+ */
 
-let selectedItem = null;
-let selectedType = null; // 'file' or 'snippet'
+const jsonInput = document.getElementById('jsonInput');
+const executeBtn = document.getElementById('executeBtn');
+const statusDiv = document.getElementById('status');
+const loadExampleBtn = document.getElementById('loadExample');
+const fileInput = document.getElementById('fileInput');
+const extractBtn = document.getElementById('extractBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const copyBtn = document.getElementById('copyBtn');
 
-document.addEventListener('DOMContentLoaded', async () => {
-  setupTabs();
-  setupSyncButton();
-  setupJsonImport();
-  await loadData();
-  
-  // Also listen for storage changes to auto-update
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === 'local' && (changes.temporaryFiles || changes.snippets)) {
-      console.log('[Popup] Storage changed, reloading data');
-      loadData();
+// Check if current tab is junon.io
+let isJunonSite = false;
+let currentTab = null;
+
+// Check current tab on popup open
+async function checkCurrentTab() {
+    try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        currentTab = tab;
+        isJunonSite = tab.url && tab.url.includes('junon.io');
+        
+        // Update UI based on site
+        updateUIForSite();
+        
+        return isJunonSite;
+    } catch (error) {
+        console.error('Error checking tab:', error);
+        isJunonSite = false;
+        updateUIForSite();
+        return false;
     }
-  });
+}
+
+function updateUIForSite() {
+    if (isJunonSite) {
+        // Enable all buttons
+        executeBtn.disabled = false;
+        extractBtn.disabled = false;
+        statusDiv.className = 'status';
+        statusDiv.textContent = '';
+        
+        // Remove warning message if exists
+        const warningMsg = document.getElementById('warningMessage');
+        if (warningMsg) {
+            warningMsg.remove();
+        }
+    } else {
+        // Disable all action buttons
+        executeBtn.disabled = true;
+        extractBtn.disabled = true;
+        downloadBtn.disabled = true;
+        copyBtn.disabled = true;
+        
+        // Show warning message
+        showWarningMessage();
+    }
+}
+
+function showWarningMessage() {
+    // Remove existing warning if any
+    const existingWarning = document.getElementById('warningMessage');
+    if (existingWarning) {
+        existingWarning.remove();
+    }
+    
+    // Create warning message
+    const warningDiv = document.createElement('div');
+    warningDiv.id = 'warningMessage';
+    warningDiv.className = 'status error';
+    warningDiv.style.marginTop = '10px';
+    warningDiv.textContent = '⚠️ Please open junon.io to use this extension';
+    
+    // Insert after the first section
+    const firstSection = document.querySelector('.section');
+    if (firstSection) {
+        firstSection.parentNode.insertBefore(warningDiv, firstSection.nextSibling);
+    }
+}
+
+// Example configuration
+const exampleConfig = {
+  "triggers": [
+    {
+      "event": "PlayerRespawn",
+      "actions": [
+        {
+          "type": "command",
+          "values": ["/give survival_tool 1"]
+        },
+        {
+          "type": "ifthenelse",
+          "condition": "player.health == 100",
+          "then": [
+            {
+              "type": "timer",
+              "name": "HealthCheck",
+              "duration": 10,
+              "tick": 1
+            },
+            {
+              "type": "command",
+              "values": ["/chat Timer started for full health player"]
+            }
+          ],
+          "else": [
+            {
+              "type": "command",
+              "values": ["/chat You need healing"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
+// Load example configuration
+loadExampleBtn.addEventListener('click', () => {
+    jsonInput.value = JSON.stringify(exampleConfig, null, 2);
 });
 
-function setupTabs() {
-  const tabButtons = document.querySelectorAll('.tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
-
-  tabButtons.forEach(button => {
-    button.addEventListener('click', () => {
-      const tabName = button.dataset.tab;
-      
-      // Update buttons
-      tabButtons.forEach(btn => btn.classList.remove('active'));
-      button.classList.add('active');
-      
-      // Update content
-      tabContents.forEach(content => content.classList.remove('active'));
-      document.getElementById(`${tabName}Tab`).classList.add('active');
-      
-      // Clear selection when switching tabs
-      selectedItem = null;
-      selectedType = null;
-      updateImportButton();
-    });
-  });
-}
-
-function setupSyncButton() {
-  const syncBtn = document.getElementById('syncBtn');
-  syncBtn.addEventListener('click', async () => {
-    syncBtn.disabled = true;
-    syncBtn.textContent = 'Syncing...';
-    
-    try {
-      // Send message to background to sync from editor
-      const response = await chrome.runtime.sendMessage({ action: 'syncFromEditor' });
-      
-      if (response && response.success) {
-        showStatus('Synced successfully!', 'success');
-        // Wait a bit for storage to be updated
-        await new Promise(resolve => setTimeout(resolve, 500));
-        await loadData();
-      } else {
-        showStatus('Sync failed: ' + (response?.error || 'Editor not found'), 'error');
-      }
-    } catch (error) {
-      showStatus('Sync error: ' + error.message, 'error');
-    } finally {
-      syncBtn.disabled = false;
-      syncBtn.textContent = 'Sync from Editor';
-    }
-  });
-}
-
-async function loadData() {
-  try {
-    const data = await chrome.storage.local.get(['temporaryFiles', 'snippets']);
-    
-    console.log('[Popup] Loading data:', {
-      files: data.temporaryFiles?.length || 0,
-      snippets: data.snippets?.length || 0
-    });
-    
-    // Load files
-    const filesList = document.getElementById('filesList');
-    if (data.temporaryFiles && Array.isArray(data.temporaryFiles) && data.temporaryFiles.length > 0) {
-      filesList.innerHTML = '';
-      data.temporaryFiles.forEach(file => {
-        if (file && file.name && file.content) {
-          const preview = file.content.length > 100 ? file.content.substring(0, 100) + '...' : file.content;
-          const item = createListItem(file.name, preview, 'file', file);
-          filesList.appendChild(item);
-        }
-      });
-    } else {
-      filesList.innerHTML = '<div class="empty-state">No files found. Sync from editor first.</div>';
-    }
-    
-    // Load snippets
-    const snippetsList = document.getElementById('snippetsList');
-    if (data.snippets && Array.isArray(data.snippets) && data.snippets.length > 0) {
-      snippetsList.innerHTML = '';
-      data.snippets.forEach(snippet => {
-        if (snippet && snippet.title) {
-          const item = createListItem(snippet.title, snippet.description || 'No description', 'snippet', snippet);
-          snippetsList.appendChild(item);
-        }
-      });
-    } else {
-      snippetsList.innerHTML = '<div class="empty-state">No snippets found. Sync from editor first.</div>';
-    }
-  } catch (error) {
-    console.error('[Popup] Error loading data:', error);
-    const filesList = document.getElementById('filesList');
-    const snippetsList = document.getElementById('snippetsList');
-    filesList.innerHTML = '<div class="empty-state">Error loading data. Please try syncing again.</div>';
-    snippetsList.innerHTML = '<div class="empty-state">Error loading data. Please try syncing again.</div>';
-  }
-}
-
-function createListItem(title, description, type, data) {
-  const item = document.createElement('div');
-  item.className = 'list-item';
-  item.dataset.type = type;
-  
-  item.innerHTML = `
-    <div class="list-item-header">
-      <div class="list-item-title">${title}</div>
-      <div class="list-item-meta">${type === 'file' ? 'File' : 'Snippet'}</div>
-    </div>
-    <div class="list-item-description">${description}</div>
-  `;
-  
-  item.addEventListener('click', () => {
-    // Remove previous selection
-    document.querySelectorAll('.list-item').forEach(i => i.classList.remove('selected'));
-    item.classList.add('selected');
-    
-    selectedItem = data;
-    selectedType = type;
-    updateImportButton();
-  });
-  
-  return item;
-}
-
-function updateImportButton() {
-  let importBtn = document.getElementById('importBtn');
-  
-  if (!importBtn) {
-    importBtn = document.createElement('button');
-    importBtn.id = 'importBtn';
-    importBtn.className = 'btn btn-secondary';
-    importBtn.textContent = 'Import to Junon.io';
-    document.querySelector('.container').appendChild(importBtn);
-    
-    importBtn.addEventListener('click', async () => {
-      if (!selectedItem) {
-        showStatus('Please select a file or snippet first', 'error');
-        return;
-      }
-      
-      const code = selectedType === 'file' ? selectedItem.content : selectedItem.code;
-      
-      // Use the shared import function
-      importBtn.disabled = true;
-      importBtn.textContent = 'Importing...';
-      
-      try {
-        await importCodeToJunon(code);
-      } finally {
-        importBtn.disabled = false;
-        importBtn.textContent = 'Import to Junon.io';
-      }
-    });
-  }
-  
-  importBtn.style.display = selectedItem ? 'block' : 'none';
-}
-
-function setupJsonImport() {
-  const parseBtn = document.getElementById('parseJsonBtn');
-  const jsonInput = document.getElementById('jsonInput');
-  
-  if (!parseBtn || !jsonInput) {
-    console.error('[Popup] JSON import elements not found');
-    return;
-  }
-  
-  parseBtn.addEventListener('click', async () => {
-    const jsonText = jsonInput.value.trim();
-    
-    if (!jsonText) {
-      showStatus('Please paste JSON content', 'error');
-      return;
-    }
-    
-    try {
-      console.log('[Popup] Parsing JSON:', jsonText.substring(0, 100));
-      
-      // Parse JSON
-      const jsonData = JSON.parse(jsonText);
-      console.log('[Popup] Parsed JSON data:', jsonData);
-      
-      // Convert JSON to Junon code
-      const code = convertJSONToJunon(jsonData);
-      console.log('[Popup] Converted code:', code);
-      
-      if (!code || code.trim().length === 0) {
-        showStatus('Invalid JSON format or empty result. Expected format: {"triggers": [...]}', 'error');
-        return;
-      }
-      
-      // Import the code
-      parseBtn.disabled = true;
-      parseBtn.textContent = 'Importing...';
-      showStatus('Converting JSON to code...', 'success');
-      
-      try {
-        await importCodeToJunon(code);
-        // Clear JSON input on success
-        jsonInput.value = '';
-      } catch (importError) {
-        console.error('[Popup] Import error:', importError);
-        showStatus('Import failed: ' + importError.message, 'error');
-      } finally {
-        parseBtn.disabled = false;
-        parseBtn.textContent = 'Parse & Import JSON';
-      }
-      
-    } catch (error) {
-      console.error('[Popup] JSON parse error:', error);
-      showStatus('Invalid JSON: ' + error.message, 'error');
-      parseBtn.disabled = false;
-      parseBtn.textContent = 'Parse & Import JSON';
-    }
-  });
-}
-
-function convertJSONToJunon(json) {
-  if (!json || !json.triggers || !Array.isArray(json.triggers)) {
-    return null;
-  }
-  
-  let code = '';
-  
-  json.triggers.forEach((trigger, index) => {
-    if (index > 0) code += '\n';
-    
-    // Trigger
-    if (!trigger.event) return;
-    code += `@trigger ${trigger.event}\n`;
-    
-    // Commands
-    if (trigger.commands && Array.isArray(trigger.commands) && trigger.commands.length > 0) {
-      code += '    @commands\n';
-      trigger.commands.forEach(cmd => {
-        if (cmd) code += `        ${cmd}\n`;
-      });
-    }
-    
-    // Conditions
-    if (trigger.conditions && Array.isArray(trigger.conditions) && trigger.conditions.length > 0) {
-      trigger.conditions.forEach(condition => {
-        if (!condition.condition) return;
-        code += `    @if ${condition.condition}\n`;
-        
-        // Then
-        if (condition.then && Array.isArray(condition.then) && condition.then.length > 0) {
-          condition.then.forEach(cmd => {
-            if (cmd) code += `        then ${cmd}\n`;
-          });
-        }
-        
-        // Elseif
-        if (condition.elseif && Array.isArray(condition.elseif) && condition.elseif.length > 0) {
-          condition.elseif.forEach(elseif => {
-            if (!elseif.condition) return;
-            code += `        elseif ${elseif.condition}\n`;
-            if (elseif.then && Array.isArray(elseif.then) && elseif.then.length > 0) {
-              elseif.then.forEach(cmd => {
-                if (cmd) code += `            then ${cmd}\n`;
-              });
+// File input handler
+fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file && file.type === 'application/json') {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const json = JSON.parse(event.target.result);
+                jsonInput.value = JSON.stringify(json, null, 2);
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✓ JSON file loaded successfully!';
+                setTimeout(() => {
+                    statusDiv.className = 'status';
+                    statusDiv.textContent = '';
+                }, 2000);
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `Error reading file: ${error.message}`;
             }
-          });
-        }
-      });
-    }
-    
-    // Timers
-    if (trigger.timers && Array.isArray(trigger.timers) && trigger.timers.length > 0) {
-      trigger.timers.forEach(timer => {
-        if (timer.delay !== undefined) {
-          code += `    @timer ${timer.delay}\n`;
-          if (timer.commands && Array.isArray(timer.commands) && timer.commands.length > 0) {
-            timer.commands.forEach(cmd => {
-              if (cmd) code += `        ${cmd}\n`;
-            });
-          }
-        }
-      });
-    }
-  });
-  
-  return code.trim();
-}
-
-async function importCodeToJunon(code) {
-  // Get current tab - try to find junon.io tab
-  const tabs = await chrome.tabs.query({});
-  const junonTab = tabs.find(t => t.url && (t.url.includes('junon.io') || t.url.includes('junon')));
-  
-  if (!junonTab) {
-    throw new Error('Please open junon.io in a tab first');
-  }
-  
-  console.log('[Popup] Found junon.io tab:', junonTab.id, junonTab.url);
-  
-  // Don't switch tabs - keep popup open
-  // Just ensure the tab is accessible
-  try {
-    await chrome.tabs.get(junonTab.id);
-  } catch (e) {
-    throw new Error('Cannot access junon.io tab. Please refresh the page.');
-  }
-  
-  try {
-    showStatus('Injecting scripts...', 'success');
-    
-    // Inject content script if not already injected
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: junonTab.id },
-        files: ['parser.js', 'content.js']
-      });
-      console.log('[Popup] Scripts injected successfully');
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    } catch (injectError) {
-      console.warn('[Popup] Script injection warning:', injectError);
-      // Continue anyway - scripts might already be injected
-    }
-    
-    showStatus('Sending code to junon.io...', 'success');
-    
-    // Wait a bit more to ensure scripts are ready
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const response = await chrome.tabs.sendMessage(junonTab.id, {
-      action: 'importCode',
-      code: code
-    });
-    
-    console.log('[Popup] Response from content script:', response);
-    
-    if (response && response.success) {
-      const message = response.triggersProcessed 
-        ? `Successfully imported ${response.triggersProcessed} trigger(s)!`
-        : 'Code imported successfully!';
-      showStatus(message, 'success');
+        };
+        reader.readAsText(file);
     } else {
-      const errorMsg = response?.error || 'Unknown error';
-      console.error('[Popup] Import failed:', errorMsg);
-      showStatus('Import failed: ' + errorMsg, 'error');
-      throw new Error(errorMsg);
+        statusDiv.className = 'status error';
+        statusDiv.textContent = 'Please select a valid JSON file';
     }
-  } catch (error) {
-    console.error('[Popup] Import error:', error);
-    let errorMessage = error.message;
-    
-    if (error.message.includes('Could not establish connection')) {
-      errorMessage = 'Content script not ready. Please refresh the junon.io page and try again.';
-    } else if (error.message.includes('Cannot access')) {
-      errorMessage = 'Please make sure you are on the junon.io page';
-    } else if (error.message.includes('Receiving end does not exist')) {
-      errorMessage = 'Content script not loaded. Please refresh junon.io page.';
-    }
-    
-    showStatus('Import error: ' + errorMessage, 'error');
-    throw error;
-  }
-}
+});
 
-function convertJSONToJunon(json) {
-  if (!json || !json.triggers || !Array.isArray(json.triggers)) {
-    return null;
-  }
-  
-  let code = '';
-  
-  json.triggers.forEach((trigger, index) => {
-    if (index > 0) code += '\n';
+// Drag and drop handlers
+jsonInput.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    jsonInput.classList.add('drag-over');
+});
+
+jsonInput.addEventListener('dragleave', () => {
+    jsonInput.classList.remove('drag-over');
+});
+
+jsonInput.addEventListener('drop', (e) => {
+    e.preventDefault();
+    jsonInput.classList.remove('drag-over');
     
-    // Trigger
-    if (!trigger.event) return;
-    code += `@trigger ${trigger.event}\n`;
-    
-    // Commands
-    if (trigger.commands && Array.isArray(trigger.commands) && trigger.commands.length > 0) {
-      code += '    @commands\n';
-      trigger.commands.forEach(cmd => {
-        if (cmd) code += `        ${cmd}\n`;
-      });
-    }
-    
-    // Conditions
-    if (trigger.conditions && Array.isArray(trigger.conditions) && trigger.conditions.length > 0) {
-      trigger.conditions.forEach(condition => {
-        if (!condition.condition) return;
-        code += `    @if ${condition.condition}\n`;
-        
-        // Then
-        if (condition.then && Array.isArray(condition.then) && condition.then.length > 0) {
-          condition.then.forEach(cmd => {
-            if (cmd) code += `        then ${cmd}\n`;
-          });
-        }
-        
-        // Elseif
-        if (condition.elseif && Array.isArray(condition.elseif) && condition.elseif.length > 0) {
-          condition.elseif.forEach(elseif => {
-            if (!elseif.condition) return;
-            code += `        elseif ${elseif.condition}\n`;
-            if (elseif.then && Array.isArray(elseif.then) && elseif.then.length > 0) {
-              elseif.then.forEach(cmd => {
-                if (cmd) code += `            then ${cmd}\n`;
-              });
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === 'application/json') {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const json = JSON.parse(event.target.result);
+                jsonInput.value = JSON.stringify(json, null, 2);
+                statusDiv.className = 'status success';
+                statusDiv.textContent = '✓ JSON file loaded successfully!';
+                setTimeout(() => {
+                    statusDiv.className = 'status';
+                    statusDiv.textContent = '';
+                }, 2000);
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `Error reading file: ${error.message}`;
             }
-          });
-        }
-      });
-    }
-    
-    // Timers
-    if (trigger.timers && Array.isArray(trigger.timers) && trigger.timers.length > 0) {
-      trigger.timers.forEach(timer => {
-        if (timer.delay !== undefined) {
-          code += `    @timer ${timer.delay}\n`;
-          if (timer.commands && Array.isArray(timer.commands) && timer.commands.length > 0) {
-            timer.commands.forEach(cmd => {
-              if (cmd) code += `        ${cmd}\n`;
-            });
-          }
-        }
-      });
-    }
-  });
-  
-  return code.trim();
-}
-
-async function importCodeToJunon(code) {
-  // Get current tab - try to find junon.io tab
-  const tabs = await chrome.tabs.query({});
-  const junonTab = tabs.find(t => t.url && (t.url.includes('junon.io') || t.url.includes('junon')));
-  
-  if (!junonTab) {
-    throw new Error('Please open junon.io in a tab first');
-  }
-  
-  console.log('[Popup] Found junon.io tab:', junonTab.id, junonTab.url);
-  
-  // Don't switch tabs - keep popup open
-  // Just ensure the tab is accessible
-  try {
-    await chrome.tabs.get(junonTab.id);
-  } catch (e) {
-    throw new Error('Cannot access junon.io tab. Please refresh the page.');
-  }
-  
-  try {
-    showStatus('Injecting scripts...', 'success');
-    
-    // Inject content script if not already injected
-    try {
-      await chrome.scripting.executeScript({
-        target: { tabId: junonTab.id },
-        files: ['parser.js', 'content.js']
-      });
-      console.log('[Popup] Scripts injected successfully');
-      await new Promise(resolve => setTimeout(resolve, 1500));
-    } catch (injectError) {
-      console.warn('[Popup] Script injection warning:', injectError);
-      // Continue anyway - scripts might already be injected
-    }
-    
-    showStatus('Sending code to junon.io...', 'success');
-    
-    // Wait a bit more to ensure scripts are ready
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const response = await chrome.tabs.sendMessage(junonTab.id, {
-      action: 'importCode',
-      code: code
-    });
-    
-    console.log('[Popup] Response from content script:', response);
-    
-    if (response && response.success) {
-      const message = response.triggersProcessed 
-        ? `Successfully imported ${response.triggersProcessed} trigger(s)!`
-        : 'Code imported successfully!';
-      showStatus(message, 'success');
+        };
+        reader.readAsText(file);
     } else {
-      const errorMsg = response?.error || 'Unknown error';
-      console.error('[Popup] Import failed:', errorMsg);
-      showStatus('Import failed: ' + errorMsg, 'error');
-      throw new Error(errorMsg);
+        statusDiv.className = 'status error';
+        statusDiv.textContent = 'Please drop a valid JSON file';
     }
-  } catch (error) {
-    console.error('[Popup] Import error:', error);
-    let errorMessage = error.message;
-    
-    if (error.message.includes('Could not establish connection')) {
-      errorMessage = 'Content script not ready. Please refresh the junon.io page and try again.';
-    } else if (error.message.includes('Cannot access')) {
-      errorMessage = 'Please make sure you are on the junon.io page';
-    } else if (error.message.includes('Receiving end does not exist')) {
-      errorMessage = 'Content script not loaded. Please refresh junon.io page.';
-    }
-    
-    showStatus('Import error: ' + errorMessage, 'error');
-    throw error;
-  }
-}
+});
 
-function showStatus(message, type = 'success') {
-  const status = document.getElementById('status');
-  status.textContent = message;
-  status.className = `status ${type}`;
-  
-  setTimeout(() => {
-    status.classList.add('hidden');
-  }, 3000);
-}
+// Progress elements
+const progressContainer = document.getElementById('progressContainer');
+const progressText = document.getElementById('progressText');
+const progressCount = document.getElementById('progressCount');
+const progressFill = document.getElementById('progressFill');
+const progressTask = document.getElementById('progressTask');
+
+// Listen for progress updates
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "progressUpdate") {
+        const { completed, total, percentage, task } = request.progress;
+        progressContainer.classList.add('active');
+        progressText.textContent = `${percentage}%`;
+        progressCount.textContent = `${completed} / ${total}`;
+        progressFill.style.width = `${percentage}%`;
+        progressTask.textContent = task || '';
+    }
+});
+
+// Execute automation
+executeBtn.addEventListener('click', async () => {
+    // Re-check if still on junon.io
+    const stillOnJunon = await checkCurrentTab();
+    if (!stillOnJunon) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = 'Please open junon.io in the current tab';
+        return;
+    }
+    
+    try {
+        // Validate JSON
+        const config = JSON.parse(jsonInput.value);
+
+        // Reset progress
+        progressContainer.classList.remove('active');
+        progressFill.style.width = '0%';
+        progressText.textContent = '0%';
+        progressCount.textContent = '0 / 0';
+        progressTask.textContent = '';
+
+        // Show loading status
+        statusDiv.className = 'status loading';
+        statusDiv.textContent = 'Executing automation...';
+        executeBtn.disabled = true;
+
+        // Get the active tab
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        
+        if (!tab.url || !tab.url.includes('junon.io')) {
+            statusDiv.className = 'status error';
+            statusDiv.textContent = 'Please open junon.io in the current tab';
+            executeBtn.disabled = false;
+            updateUIForSite();
+            return;
+        }
+
+        // Send message to content script with retry logic
+        const sendMessageWithRetry = (retries = 3) => {
+            return new Promise((resolve, reject) => {
+                chrome.tabs.sendMessage(tab.id, {
+                    action: "executeAutomation",
+                    data: config
+                }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        if (retries > 0) {
+                            // Retry after a short delay
+                            setTimeout(() => {
+                                sendMessageWithRetry(retries - 1).then(resolve).catch(reject);
+                            }, 500);
+                        } else {
+                            reject(new Error(chrome.runtime.lastError.message || 'Content script not responding. Please refresh the page.'));
+                        }
+                    } else {
+                        resolve(response);
+                    }
+                });
+            });
+        };
+
+        try {
+            const response = await sendMessageWithRetry();
+            
+            if (response && response.success) {
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✓ Automation completed successfully! (${response.triggersProcessed || 0} trigger(s) processed)`;
+                // Keep progress visible for a moment, then hide
+                setTimeout(() => {
+                    progressContainer.classList.remove('active');
+                }, 2000);
+            } else {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `Error: ${response?.error || 'Unknown error'}`;
+                progressContainer.classList.remove('active');
+            }
+        } catch (error) {
+            statusDiv.className = 'status error';
+            statusDiv.textContent = `Error: ${error.message}`;
+            progressContainer.classList.remove('active');
+        } finally {
+            executeBtn.disabled = false;
+        }
+    } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = `Invalid JSON: ${error.message}`;
+        executeBtn.disabled = false;
+        progressContainer.classList.remove('active');
+    }
+});
+
+// Load saved configuration on popup open and check site
+(async () => {
+    // Check if on junon.io first
+    await checkCurrentTab();
+    
+    // Then load saved config
+    chrome.storage.local.get(['lastConfig'], (result) => {
+        if (result.lastConfig) {
+            jsonInput.value = result.lastConfig;
+        }
+    });
+})();
+
+// Save configuration when it changes
+jsonInput.addEventListener('change', () => {
+    chrome.storage.local.set({ lastConfig: jsonInput.value });
+});
+
+// Extract functionality
+let extractedData = null;
+
+extractBtn.addEventListener('click', async () => {
+    // Re-check if still on junon.io
+    const stillOnJunon = await checkCurrentTab();
+    if (!stillOnJunon) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = 'Please open junon.io in the current tab';
+        return;
+    }
+    
+    try {
+        statusDiv.className = 'status loading';
+        statusDiv.textContent = 'Extracting triggers and actions...';
+        extractBtn.disabled = true;
+
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        
+        if (!tab.url || !tab.url.includes('junon.io')) {
+            statusDiv.className = 'status error';
+            statusDiv.textContent = 'Please open junon.io in the current tab';
+            extractBtn.disabled = false;
+            updateUIForSite();
+            return;
+        }
+
+        // Try to send message with retry logic
+        const sendMessageWithRetry = (retries = 3) => {
+            return new Promise((resolve, reject) => {
+                chrome.tabs.sendMessage(tab.id, {
+                    action: "extractTriggers"
+                }, (response) => {
+                    if (chrome.runtime.lastError) {
+                        if (retries > 0) {
+                            // Retry after a short delay
+                            setTimeout(() => {
+                                sendMessageWithRetry(retries - 1).then(resolve).catch(reject);
+                            }, 500);
+                        } else {
+                            reject(new Error(chrome.runtime.lastError.message || 'Content script not responding. Please refresh the page.'));
+                        }
+                    } else {
+                        resolve(response);
+                    }
+                });
+            });
+        };
+
+        try {
+            const response = await sendMessageWithRetry();
+            
+            if (response && response.success) {
+                extractedData = response.data;
+                const jsonString = JSON.stringify(extractedData, null, 2);
+                
+                // Update textarea with extracted data
+                jsonInput.value = jsonString;
+                
+                // Enable download and copy buttons
+                downloadBtn.disabled = false;
+                copyBtn.disabled = false;
+                
+                statusDiv.className = 'status success';
+                statusDiv.textContent = `✓ Extracted ${extractedData.triggers?.length || 0} trigger(s) successfully!`;
+            } else {
+                statusDiv.className = 'status error';
+                statusDiv.textContent = `Error: ${response?.error || 'Unknown error'}`;
+            }
+        } catch (error) {
+            statusDiv.className = 'status error';
+            statusDiv.textContent = `Error: ${error.message}`;
+        } finally {
+            extractBtn.disabled = false;
+        }
+    } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = `Error: ${error.message}`;
+        extractBtn.disabled = false;
+    }
+});
+
+downloadBtn.addEventListener('click', () => {
+    if (!extractedData) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = 'No data to download. Please extract first.';
+        return;
+    }
+
+    const jsonString = JSON.stringify(extractedData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `junon-triggers-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    statusDiv.className = 'status success';
+    statusDiv.textContent = '✓ JSON file downloaded!';
+    setTimeout(() => {
+        statusDiv.className = 'status';
+        statusDiv.textContent = '';
+    }, 2000);
+});
+
+copyBtn.addEventListener('click', async () => {
+    if (!extractedData) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = 'No data to copy. Please extract first.';
+        return;
+    }
+
+    const jsonString = JSON.stringify(extractedData, null, 2);
+    
+    try {
+        await navigator.clipboard.writeText(jsonString);
+        statusDiv.className = 'status success';
+        statusDiv.textContent = '✓ JSON copied to clipboard!';
+        setTimeout(() => {
+            statusDiv.className = 'status';
+            statusDiv.textContent = '';
+        }, 2000);
+    } catch (error) {
+        statusDiv.className = 'status error';
+        statusDiv.textContent = `Error copying to clipboard: ${error.message}`;
+    }
+});

@@ -73,23 +73,21 @@ export interface SuggestionContext {
   suggestions: string[];
 }
 
-// JSON Model Interfaces
-export interface ConditionBlock {
-  condition: string;
-  then: string[];
-  elseif?: ConditionBlock[];
-}
-
-export interface TimerBlock {
-  delay: number;
-  commands: string[];
+// JSON Model Interfaces - New format with nested actions
+export interface Action {
+  type: "command" | "ifthenelse" | "timer";
+  values?: string[];  // for command
+  condition?: string;  // for ifthenelse
+  then?: Action[];     // for ifthenelse (nested)
+  else?: Action[];     // for ifthenelse (nested)
+  name?: string;       // for timer
+  duration?: number;   // for timer
+  tick?: number;       // for timer
 }
 
 export interface TriggerBlock {
   event: string;
-  commands?: string[];
-  conditions?: ConditionBlock[];
-  timers?: TimerBlock[];
+  actions: Action[];
 }
 
 export interface JunonCodeJSON {
@@ -260,122 +258,197 @@ export function convertJunonToJSON(code: string): JunonCodeJSON {
   const lines = code.split('\n');
   
   let currentTrigger: TriggerBlock | null = null;
+  let currentActions: Action[] = [];
   let currentCommands: string[] = [];
-  let currentConditions: ConditionBlock[] = [];
-  let currentTimers: TimerBlock[] = [];
+  let currentCondition: { condition: string; then: Action[]; else: Action[] } | null = null;
+  let currentTimer: { duration: number; name: string; tick: number; commands: string[] } | null = null;
   let inCommands = false;
-  let currentCondition: ConditionBlock | null = null;
-  let currentTimer: TimerBlock | null = null;
   let inTimer = false;
+  let inThen = false;
+  let inElse = false;
   let triggerIndent = 0;
+  
+  const flushCommands = () => {
+    if (currentCommands.length > 0) {
+      const action: Action = {
+        type: "command",
+        values: [...currentCommands]
+      };
+      if (inThen && currentCondition) {
+        currentCondition.then.push(action);
+      } else if (inElse && currentCondition) {
+        currentCondition.else.push(action);
+      } else {
+        currentActions.push(action);
+      }
+      currentCommands = [];
+    }
+  };
+  
+  const flushTimer = () => {
+    if (currentTimer && currentTimer.commands.length > 0) {
+      const action: Action = {
+        type: "timer",
+        name: currentTimer.name,
+        duration: currentTimer.duration,
+        tick: currentTimer.tick,
+        values: currentTimer.commands.length > 0 ? currentTimer.commands : undefined
+      };
+      if (inThen && currentCondition) {
+        currentCondition.then.push(action);
+      } else if (inElse && currentCondition) {
+        currentCondition.else.push(action);
+      } else {
+        currentActions.push(action);
+      }
+      currentTimer = null;
+    }
+  };
+  
+  const flushCondition = () => {
+    if (currentCondition) {
+      flushCommands();
+      flushTimer();
+      const action: Action = {
+        type: "ifthenelse",
+        condition: currentCondition.condition,
+        then: currentCondition.then.length > 0 ? currentCondition.then : undefined,
+        else: currentCondition.else.length > 0 ? currentCondition.else : undefined
+      };
+      currentActions.push(action);
+      currentCondition = null;
+      inThen = false;
+      inElse = false;
+    }
+  };
   
   const saveCurrentTrigger = () => {
     if (currentTrigger) {
-      if (currentCommands.length > 0) currentTrigger.commands = currentCommands;
-      if (currentConditions.length > 0) currentTrigger.conditions = currentConditions;
-      if (currentTimers.length > 0) currentTrigger.timers = currentTimers;
+      flushCommands();
+      flushTimer();
+      flushCondition();
+      currentTrigger.actions = currentActions;
       triggers.push(currentTrigger);
+      currentActions = [];
     }
   };
   
   lines.forEach((line) => {
     const trimmed = line.trim();
-    if (trimmed.length === 0) return; // Skip empty lines
+    if (trimmed.length === 0) return;
     
     const indent = line.length - line.trimStart().length;
     
     // New trigger block
     if (trimmed.startsWith('@trigger')) {
       saveCurrentTrigger();
-      
       const match = trimmed.match(/@trigger\s+(\w+)/);
       if (match) {
-        currentTrigger = { event: match[1] };
+        currentTrigger = { event: match[1], actions: [] };
+        currentActions = [];
         currentCommands = [];
-        currentConditions = [];
-        currentTimers = [];
         currentCondition = null;
         currentTimer = null;
         inCommands = false;
         inTimer = false;
+        inThen = false;
+        inElse = false;
         triggerIndent = indent;
       }
     }
     // Commands block
     else if (trimmed.startsWith('@commands') && currentTrigger && indent > triggerIndent) {
+      flushCommands();
+      flushTimer();
+      flushCondition();
       inCommands = true;
       inTimer = false;
+      inThen = false;
+      inElse = false;
       currentCondition = null;
+      currentTimer = null;
     }
     // If condition
     else if (trimmed.startsWith('@if') && currentTrigger && indent > triggerIndent) {
+      flushCommands();
+      flushTimer();
+      flushCondition();
       inCommands = false;
       inTimer = false;
+      inThen = false;
+      inElse = false;
       const conditionMatch = trimmed.match(/@if\s+(.+)/);
       if (conditionMatch) {
         currentCondition = {
           condition: conditionMatch[1].trim(),
           then: [],
-          elseif: []
+          else: []
         };
-        currentConditions.push(currentCondition);
       }
     }
     // Then clause
     else if (trimmed.startsWith('then') && currentCondition && indent > triggerIndent) {
+      flushCommands();
+      flushTimer();
+      inThen = true;
+      inElse = false;
       const thenMatch = trimmed.match(/then\s+(.+)/);
-      if (thenMatch) {
-        currentCondition.then.push(thenMatch[1].trim());
+      if (thenMatch && thenMatch[1].startsWith('/')) {
+        currentCommands.push(thenMatch[1].trim());
       }
     }
-    // Elseif clause
+    // Else clause
+    else if (trimmed.startsWith('else') && !trimmed.startsWith('elseif') && currentCondition && indent > triggerIndent) {
+      flushCommands();
+      flushTimer();
+      inThen = false;
+      inElse = true;
+      const elseMatch = trimmed.match(/else\s+(.+)/);
+      if (elseMatch && elseMatch[1].startsWith('/')) {
+        currentCommands.push(elseMatch[1].trim());
+      }
+    }
+    // Elseif clause - save current condition and start new one
     else if (trimmed.startsWith('elseif') && currentCondition && indent > triggerIndent) {
+      flushCommands();
+      flushTimer();
+      flushCondition();
+      inThen = true;
+      inElse = false;
       const elseifMatch = trimmed.match(/elseif\s+(.+?)(?:\s+then\s+(.+))?$/);
       if (elseifMatch) {
-        if (!currentCondition.elseif) {
-          currentCondition.elseif = [];
-        }
-        const elseifBlock: ConditionBlock = {
+        currentCondition = {
           condition: elseifMatch[1].trim(),
-          then: elseifMatch[2] ? [elseifMatch[2].trim()] : []
+          then: elseifMatch[2] && elseifMatch[2].startsWith('/') ? [{ type: "command", values: [elseifMatch[2].trim()] }] : [],
+          else: []
         };
-        currentCondition.elseif.push(elseifBlock);
       }
     }
     // Timer block
     else if (trimmed.startsWith('@timer') && currentTrigger && indent > triggerIndent) {
+      flushCommands();
+      flushTimer();
+      if (!inThen && !inElse) {
+        flushCondition();
+      }
       inCommands = false;
       inTimer = true;
-      currentCondition = null;
-      const timerMatch = trimmed.match(/@timer\s+(\d+)/);
+      const timerMatch = trimmed.match(/@timer\s+(\d+)(?:\s+(\w+))?/);
       if (timerMatch) {
         currentTimer = {
-          delay: parseInt(timerMatch[1], 10),
+          duration: parseInt(timerMatch[1], 10),
+          name: timerMatch[2] || 'Timer',
+          tick: 1,
           commands: []
         };
-        currentTimers.push(currentTimer);
       }
     }
     // Command line
     else if (trimmed.startsWith('/') && trimmed.length > 1) {
-      if (inCommands && currentTrigger) {
-        currentCommands.push(trimmed);
-      } else if (inTimer && currentTimer) {
+      if (inTimer && currentTimer) {
         currentTimer.commands.push(trimmed);
-      } else if (currentCondition) {
-        // Command in then/elseif block
-        const thenMatch = trimmed.match(/then\s+(.+)/);
-        if (thenMatch) {
-          currentCondition.then.push(thenMatch[1].trim());
-        } else {
-          // Direct command in condition block
-          if (currentCondition.then.length === 0) {
-            currentCondition.then.push(trimmed);
-          } else {
-            // Add to last then or create new
-            currentCondition.then.push(trimmed);
-          }
-        }
+      } else {
+        currentCommands.push(trimmed);
       }
     }
   });

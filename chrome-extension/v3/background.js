@@ -9,7 +9,7 @@ chrome.runtime.onInstalled.addListener(() => {
 
 // Listen for tab updates
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (changeInfo.status === 'complete' && tab.url && tab.url.includes('junon.io')) {
+    if (changeInfo.status === 'complete' && tab.url.includes('junon.io')) {
         console.log('Junon.io tab detected');
     }
 });
