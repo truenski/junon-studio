@@ -25,6 +25,22 @@ export default defineConfig({
         '@': path.resolve(__dirname, './src'),
       },
     },
+    optimizeDeps: {
+      include: ['jszip'],
+      esbuildOptions: {
+        define: {
+          global: 'globalThis',
+        },
+      },
+    },
+    ssr: {
+      noExternal: ['jszip'],
+    },
+    build: {
+      commonjsOptions: {
+        include: [/jszip/, /node_modules/],
+      },
+    },
   },
   server: {
     host: true,

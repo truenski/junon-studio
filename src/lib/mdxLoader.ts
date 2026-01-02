@@ -196,3 +196,7 @@ export function getTriggerNames(): Promise<string[]> {
   return getTriggers().then(triggers => triggers.map(trigger => trigger.name));
 }
 
+export function getFunctionNames(): Promise<string[]> {
+  return getFunctions().then(functions => functions.map(func => func.name));
+}
+

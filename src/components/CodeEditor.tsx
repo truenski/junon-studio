@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Save, Copy, ChevronUp, ChevronDown, AlertCircle, Zap, Check } from "lucide-react";
+import { Save, Copy, ChevronUp, ChevronDown, AlertCircle, Zap, Check, ExternalLink, IndentIncrease } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AiSelectionBubble } from "./AiSelectionBubble";
 import { Logger } from "./Logger";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { useToast } from "@/hooks/use-toast";
+import { JunonExportDialog } from "./JunonExportDialog";
 import { 
   validateJunonCode, 
   getSuggestionContext, 
@@ -18,7 +19,7 @@ import type { ValidationError } from "@/hooks/useJunonSyntax";
 import { saveFile, type TemporaryFile } from "@/lib/fileStorage";
 
 interface CodeEditorProps {
-  currentFile: TemporaryFile | null;
+  currentFile?: TemporaryFile | null;
   onFileChange?: (file: TemporaryFile) => void;
 }
 
@@ -28,10 +29,9 @@ const defaultCode = `@trigger PlayerJoined
         /give sword 1
     @if player.health == 100
         then /chat Player is at full health
-        elseif player.health != 100
-        then /heal player
-    @timer 5000
-        /chat 5 seconds passed`;
+        else @if player.health != 100
+            then /heal player
+    @timer WelcomeTimer 5000 1`;
 
 export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) {
   const [code, setCode] = useState(defaultCode);
@@ -48,6 +48,8 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
   const [bottomPanelOpen, setBottomPanelOpen] = useState(false);
   const [bottomPanelMode, setBottomPanelMode] = useState<"quick" | "logger">("quick");
   const [copied, setCopied] = useState(false);
+  const [copiedJson, setCopiedJson] = useState(false);
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const { toast } = useToast();
   
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -89,32 +91,6 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
     return () => clearTimeout(timeoutId);
   }, [code, currentFile?.id, onFileChange]);
 
-  // Keyboard shortcut: Ctrl+S / Cmd+S to save
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        if (currentFile && errors.length === 0) {
-          const updatedFile = { ...currentFile, content: code };
-          saveFile(updatedFile);
-          onFileChange?.(updatedFile);
-          toast({
-            title: "Saved",
-            description: `File "${currentFile.name}" saved successfully`,
-          });
-        } else if (errors.length > 0) {
-          toast({
-            title: "Cannot save",
-            description: "Fix errors before saving",
-            variant: "destructive",
-          });
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [code, currentFile, errors.length, onFileChange, toast]);
 
   // Validate code on change
   useEffect(() => {
@@ -350,11 +326,11 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
           { label: '@commands', value: '\n    @commands\n        ' },
           { 
             label: '@if', 
-            value: '\n    @if player.health == 100\n        then /chat Player is at full health\n        elseif player.health != 100\n        then /heal player' 
+            value: '\n    @if player.health == 100\n        then @commands\n            /chat Player is at full health\n        else @if player.health != 100\n            then /heal player' 
           },
           { 
             label: '@timer', 
-            value: '\n    @timer 5000\n        /chat 5 seconds passed' 
+            value: '\n    @timer TimerName 5000 1' 
           },
         ];
     }
@@ -430,19 +406,31 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
     }
   };
 
-  const handleCopy = async () => {
+
+  const handleCopyJSON = async () => {
     try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
+      if (errors.length > 0) {
+        toast({
+          title: "Cannot copy JSON",
+          description: "Fix errors before copying as JSON",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      const jsonData = convertJunonToJSON(code);
+      const jsonString = JSON.stringify(jsonData, null, 2);
+      await navigator.clipboard.writeText(jsonString);
+      setCopiedJson(true);
       toast({
-        title: "Copied to clipboard",
-        description: "Code copied successfully",
+        title: "Copied JSON to clipboard",
+        description: "Code converted to JSON and copied successfully",
       });
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopiedJson(false), 2000);
     } catch (error) {
       toast({
-        title: "Failed to copy",
-        description: "Could not copy to clipboard",
+        title: "Failed to copy JSON",
+        description: "Could not convert code to JSON",
         variant: "destructive",
       });
     }
@@ -494,15 +482,18 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
           )}
         </div>
         <div className="flex items-center gap-2 mr-4">
+          
+         
           <Button 
             variant="ghost" 
             size="sm" 
-            className="text-muted-foreground hover:text-primary"
-            onClick={handleCopy}
-            title="Copy code to clipboard"
+            className="text-muted-foreground hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleCopyJSON}
+            disabled={errors.length > 0}
           >
-            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+           <Copy className="w-4 h-4"/>
           </Button>
+          
           <Button 
             variant="ghost" 
             size="sm" 
@@ -512,6 +503,16 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
             title={errors.length > 0 ? "Fix errors before saving" : "Save code as JSON"}
           >
             <Save className="w-4 h-4" />
+          </Button>
+          <Button 
+            variant="default" 
+            size="sm" 
+            className="text-white [background:linear-gradient(45deg,#172033,theme(colors.slate.800)_50%,#172033)_padding-box,conic-gradient(from_var(--border-angle),theme(colors.slate.600/.48)_80%,_theme(colors.indigo.500)_86%,_theme(colors.indigo.300)_90%,_theme(colors.indigo.500)_94%,_theme(colors.slate.600/.48))_border-box] rounded-2xl border border-transparent animate-border"
+            onClick={() => setExportDialogOpen(true)}
+            title="Import/Export to Junon.io"
+          >
+            
+           Import to Junon
           </Button>
         </div>
       </div>
@@ -696,12 +697,21 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
           onClose={handleAiClose}
         />
       )}
+
+      {/* Junon.io Export Dialog */}
+      <JunonExportDialog
+        open={exportDialogOpen}
+        onOpenChange={setExportDialogOpen}
+      />
     </div>
   );
 }
 
 function highlightLine(line: string, lineIndex: number, errors: ValidationError[]): React.ReactNode {
   const lineErrors = errors.filter(e => e.line === lineIndex);
+  
+  // Check if this line contains /variable set
+  const isVariableSet = /\/variable\s+set/i.test(line);
   
   // Check for @ keywords
   const atKeywords = ['@trigger', '@commands', '@if', '@timer', '@event'];
@@ -725,7 +735,10 @@ function highlightLine(line: string, lineIndex: number, errors: ValidationError[
     
     let type = 'normal';
     
-    if (atKeywords.includes(token)) {
+    // If this is a variable declaration line, highlight all non-whitespace tokens in yellow
+    if (isVariableSet && !token.match(/^\s+$/)) {
+      type = 'variable-declaration';
+    } else if (atKeywords.includes(token)) {
       type = token === '@event' ? 'deprecated' : 'keyword';
     } else if (controlWords.includes(token)) {
       type = 'control';
@@ -760,6 +773,9 @@ function highlightLine(line: string, lineIndex: number, errors: ValidationError[
             break;
           case 'command':
             className = 'text-primary';
+            break;
+          case 'variable-declaration':
+            className = 'text-yellow-400 font-semibold';
             break;
           case 'operator':
             className = 'text-neon-purple';

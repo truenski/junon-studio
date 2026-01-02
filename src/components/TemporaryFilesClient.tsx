@@ -21,6 +21,22 @@ export function TemporaryFilesClient() {
     loadFiles();
   }, []);
 
+  useEffect(() => {
+    // Listen for file rename events from CodeEditor
+    const handleFileRename = (e: CustomEvent<TemporaryFile>) => {
+      // Reload files to get updated names
+      const allFiles = getAllFiles();
+      setFiles(allFiles);
+      // Update current file if it's the renamed one
+      if (e.detail.id === currentFileId) {
+        setCurrentFileIdState(e.detail.id);
+      }
+    };
+
+    window.addEventListener('fileRenamed', handleFileRename as EventListener);
+    return () => window.removeEventListener('fileRenamed', handleFileRename as EventListener);
+  }, [currentFileId]);
+
   const loadFiles = () => {
     const allFiles = getAllFiles();
     setFiles(allFiles);

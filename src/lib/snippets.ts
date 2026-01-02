@@ -15,22 +15,23 @@ export const snippets: Snippet[] = [
     tags: ["player", "welcome", "beginner"],
     code: `@trigger PlayerJoined
     @commands
-        /chat Welcome to the game!
-        /give sword 1
-        /chat Use /help for commands`,
+        /chat $player "Welcome to the game!"
+        /give $player sword 1
+        /chat $player "Use /help for commands"`,
     author: "Community"
   },
   {
     id: 2,
     title: "Health Check System",
-    description: "Check player health and send messages or heal them",
+    description: "Check player health when it changes and send messages or heal them",
     tags: ["health", "condition", "intermediate"],
-    code: `@trigger PlayerJoined
-    @if player.health == 100
-        then /chat Player is at full health
-        elseif player.health < 50
-        then /chat Your health is low!
-        then /heal player`,
+    code: `@trigger HealthChanged
+    @if $current <= 20
+        then @commands
+            /chat $player "Low health warning!"
+            /health gain $player 30
+    @if $current == 100
+        then /chat $player "You are at full health!"`,
     author: "Community"
   },
   {
@@ -39,10 +40,8 @@ export const snippets: Snippet[] = [
     description: "Send messages after a delay using timer",
     tags: ["timer", "messages", "intermediate"],
     code: `@trigger PlayerJoined
-    @timer 5000
-        /chat 5 seconds have passed!
-    @timer 10000
-        /chat 10 seconds have passed!`,
+    @timer MessageTimer1 5000 1
+    @timer MessageTimer2 10000 1`,
     author: "Community"
   },
   {
@@ -52,24 +51,26 @@ export const snippets: Snippet[] = [
     tags: ["items", "welcome", "beginner"],
     code: `@trigger PlayerJoined
     @commands
-        /give survival_tool 1
-        /give medkit 3
-        /give ammo 50
-        /chat Welcome package received!`,
+        /give $player survival_tool 1
+        /give $player medkit 3
+        /give $player ammo 50
+        /chat $player "Welcome package received!"`,
     author: "Community"
   },
   {
     id: 5,
     title: "Conditional Item Giving",
-    description: "Give different items based on player conditions",
+    description: "Give different items based on player health changes",
     tags: ["items", "condition", "intermediate"],
-    code: `@trigger PlayerJoined
-    @if player.health < 100
-        then /give medkit 2
-        then /chat Here are some medkits
-        elseif player.health == 100
-        then /give weapon 1
-        then /chat You're healthy! Here's a weapon`,
+    code: `@trigger HealthChanged
+    @if $current < 50
+        then @commands
+            /give $player medkit 2
+            /chat $player "Here are some medkits"
+    @if $current >= 100
+        then @commands
+            /give $player weapon 1
+            /chat $player "You're healthy! Here's a weapon"`,
     author: "Community"
   },
   {
@@ -79,9 +80,9 @@ export const snippets: Snippet[] = [
     tags: ["respawn", "items", "beginner"],
     code: `@trigger PlayerRespawn
     @commands
-        /give survival_tool 1
-        /chat Welcome back!
-        /chat You have been respawned`,
+        /give $player survival_tool 1
+        /chat $player "Welcome back!"
+        /chat $player "You have been respawned"`,
     author: "Community"
   },
   {
@@ -91,19 +92,16 @@ export const snippets: Snippet[] = [
     tags: ["player", "announcement", "beginner"],
     code: `@trigger PlayerLeft
     @commands
-        /chat Player left the server`,
+        /chat @a "$player left the server"`,
     author: "Community"
   },
   {
     id: 8,
     title: "Periodic Health Check",
-    description: "Check and heal player health periodically",
+    description: "Check and heal player health periodically using timer",
     tags: ["health", "timer", "intermediate"],
     code: `@trigger PlayerJoined
-    @timer 30000
-        @if player.health < 50
-            then /heal player
-            then /chat Health restored!`,
+    @timer HealthCheck 30000 1`,
     author: "Community"
   },
   {
@@ -113,10 +111,11 @@ export const snippets: Snippet[] = [
     tags: ["combat", "attack", "intermediate"],
     code: `@trigger PlayerAttacked
     @commands
-        /chat Player was attacked!
-    @if player.health < 20
-        then /chat Player health is critical!
-        then /heal player`,
+        /chat $player "was attacked by $attackingPlayer!"
+    @if $damage > 50
+        then @commands
+            /chat $player "You took heavy damage!"
+            /health gain $player 30`,
     author: "Community"
   },
   {
@@ -126,10 +125,9 @@ export const snippets: Snippet[] = [
     tags: ["death", "combat", "intermediate"],
     code: `@trigger PlayerDestroyed
     @commands
-        /chat Player has been destroyed!
-        /chat Respawn in 5 seconds
-    @timer 5000
-        /respawn player`,
+        /chat $player "has been destroyed!"
+        /chat "Respawn in 5 seconds"
+    @timer RespawnTimer 5000 1`,
     author: "Community"
   },
   {
@@ -139,7 +137,7 @@ export const snippets: Snippet[] = [
     tags: ["movement", "advanced"],
     code: `@trigger PlayerMove
     @commands
-        /chat Player is moving`,
+        /chat $player "is moving"`,
     author: "Community"
   },
   {
@@ -149,25 +147,25 @@ export const snippets: Snippet[] = [
     tags: ["chat", "message", "intermediate"],
     code: `@trigger PlayerMessage
     @commands
-        /chat Message received from player`,
+        /chat @a "$player said: $message"`,
     author: "Community"
   },
   {
     id: 13,
     title: "Complete Welcome System",
-    description: "Full welcome system with items, messages and conditions",
+    description: "Full welcome system with items, messages and health check",
     tags: ["welcome", "items", "condition", "advanced"],
     code: `@trigger PlayerJoined
     @commands
-        /chat Welcome to the game!
-        /give sword 1
-        /give medkit 2
-    @if player.health == 100
-        then /chat Player is at full health
-        elseif player.health != 100
-        then /heal player
-    @timer 5000
-        /chat 5 seconds passed`,
+        /chat $player "Welcome to the game!"
+        /give $player sword 1
+        /give $player medkit 2
+    @trigger HealthChanged
+        @if $current < 50
+            then @commands
+                /health gain $player 50
+                /chat $player "Health restored!"
+    @timer WelcomeTimer 5000 1`,
     author: "Community"
   }
 ];

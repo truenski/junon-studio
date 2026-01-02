@@ -82,40 +82,23 @@ function showWarningMessage() {
 
 // Example configuration
 const exampleConfig = {
-  "triggers": [
-    {
-      "event": "PlayerRespawn",
-      "actions": [
-        {
-          "type": "command",
-          "values": ["/give survival_tool 1"]
-        },
-        {
-          "type": "ifthenelse",
-          "condition": "player.health == 100",
-          "then": [
-            {
-              "type": "timer",
-              "name": "HealthCheck",
-              "duration": 10,
-              "tick": 1
-            },
-            {
-              "type": "command",
-              "values": ["/chat Timer started for full health player"]
-            }
-          ],
-          "else": [
-            {
-              "type": "command",
-              "values": ["/chat You need healing"]
-            }
-          ]
-        }
-      ]
-    }
-  ]
-};
+    "triggers": [
+      {
+        "event": "PlayerJoined",
+        "actions": [
+          {
+            "type": "command",
+            "values": [
+              "/chat Welcome to the game!",
+              "/give sword 1",
+              "/chat Use /help for commands"
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
 
 // Load example configuration
 loadExampleBtn.addEventListener('click', () => {

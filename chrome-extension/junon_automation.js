@@ -110,7 +110,13 @@ class JunonAutomation {
             if (el && el.offsetParent !== null) return el;
             await this.wait(100);
         }
-        throw new Error(`Timeout waiting for element: ${selector}`);
+
+        const error = new Error(`Timeout waiting for element: ${selector}`);
+        error.selector = selector; // Store selector for easier checking
+        if(error.selector === ".add_trigger_btn"){
+            throw new Error("Please keep open Command Blocks (K) and certify you have permissions to handle command blocks")
+        }
+        throw error;
     }
 
     async findAndClick(selector, text) {
@@ -136,7 +142,64 @@ class JunonAutomation {
         this.updateProgress(`Creating trigger: ${triggerData.event}`);
         
         // 1. Click New Trigger
-        const newBtn = await this.waitForElement(this.selectors.newTriggerBtn);
+        // If this fails, try to open the menu first
+        let newBtn;
+        try {
+            newBtn = await this.waitForElement(this.selectors.newTriggerBtn, 3000);
+        } catch (error) {
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:createTrigger',message:'Timeout waiting for add_trigger_btn, trying to open menu',data:{error:error.message,errorIncludesTimeout:error.message.includes('Timeout')},timestamp:Date.now(),sessionId:'debug-session',runId:'menu-handling',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            
+            // Handle timeout errors - always try to open menu if add_trigger_btn is not found
+            const isTimeoutError = error.message && error.message.includes('Timeout');
+            const isAddTriggerBtnError = (error.selector && error.selector.includes('add_trigger_btn')) || 
+                                        (error.message && error.message.includes('add_trigger_btn'));
+            
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:createTrigger',message:'Error caught in createTrigger',data:{isTimeoutError,isAddTriggerBtnError,errorMessage:error.message,errorSelector:error.selector},timestamp:Date.now(),sessionId:'debug-session',runId:'menu-handling',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            
+            if (isTimeoutError && isAddTriggerBtnError) {
+                console.log("Timeout waiting for add_trigger_btn, trying to open command blocks menu...");
+                
+                // Try to click the command block button to open the menu
+                const hudBtn = document.querySelector('.command_block_hud_btn');
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:createTrigger',message:'Looking for command_block_hud_btn after timeout',data:{hudBtnFound:!!hudBtn},timestamp:Date.now(),sessionId:'debug-session',runId:'menu-handling',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+                
+                if (hudBtn) {
+                    console.log("Found command_block_hud_btn, clicking to open menu...");
+                    hudBtn.click();
+                    await this.wait(500);
+                    
+                    // Verify menu opened
+                    const menuAfterClick = document.querySelector(this.selectors.menu);
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:createTrigger',message:'Menu opened after clicking hud button',data:{menuOpened:!!menuAfterClick},timestamp:Date.now(),sessionId:'debug-session',runId:'menu-handling',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
+                    
+                    // Try again to find the add trigger button with longer timeout
+                    newBtn = await this.waitForElement(this.selectors.newTriggerBtn, 5000);
+                } else {
+                    // If button not found, try keyboard shortcut
+                    console.log("command_block_hud_btn not found, trying keyboard shortcut...");
+                    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK' }));
+                    await this.wait(500);
+                    
+                    // Try again to find the add trigger button with longer timeout
+                    newBtn = await this.waitForElement(this.selectors.newTriggerBtn, 5000);
+                }
+            } else {
+                // Re-throw if it's not a timeout error for add_trigger_btn
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:createTrigger',message:'Re-throwing error (not timeout for add_trigger_btn)',data:{errorMessage:error.message},timestamp:Date.now(),sessionId:'debug-session',runId:'menu-handling',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+                throw error;
+            }
+        }
+        
         newBtn.click();
         await this.wait(300);
 
@@ -240,11 +303,17 @@ class JunonAutomation {
                     fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:195',message:'Adding command value',data:{index:i,value:value},timestamp:Date.now(),sessionId:'debug-session',runId:'timer-fix',hypothesisId:'D'})}).catch(()=>{});
                     // #endregion
                     
-                    // Click add button to create new row (always click, even for first command)
-                    addBtn.click();
-                    await this.wait(400); // Wait for row with edit_mode to appear
+                    // Find add button again for each command (it may have moved after previous command)
+                    const currentAddBtn = lastAction.querySelector('.add_action_value_btn');
+                    if (!currentAddBtn) {
+                        throw new Error(`Could not find add_action_value_btn for command ${i + 1}`);
+                    }
                     
-                    // Find the newly created row with edit_mode class
+                    // Click add button to create new row
+                    currentAddBtn.click();
+                    await this.wait(500); // Wait for row with edit_mode to appear
+                    
+                    // Find the newly created row with edit_mode class (should be the only one)
                     const actionValueList = lastAction.querySelector('.action_value_list');
                     const editModeRow = actionValueList?.querySelector('.action_value_list_row.edit_mode');
                     // #region agent log
@@ -257,11 +326,27 @@ class JunonAutomation {
                         fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:209',message:'Found input in edit_mode row',data:{foundInput:!!input},timestamp:Date.now(),sessionId:'debug-session',runId:'timer-fix',hypothesisId:'A'})}).catch(()=>{});
                         // #endregion
                         if (input) {
+                            // Clear input first to ensure we're starting fresh
+                            input.value = '';
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                            await this.wait(100);
+                            
+                            // Set the new value
                             await this.setInputValue(input, value);
+                            
                             // Press Enter to confirm and save the command
-                            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
-                            input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
-                            await this.wait(300); // Wait for row to exit edit_mode
+                            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+                            input.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true }));
+                            
+                            // Wait for row to exit edit_mode and DOM to update
+                            await this.wait(500);
+                            
+                            // Verify the row is no longer in edit_mode
+                            const stillInEditMode = editModeRow.classList.contains('edit_mode');
+                            if (stillInEditMode) {
+                                console.warn(`[Junon Automation] Row still in edit_mode after Enter, waiting more...`);
+                                await this.wait(300);
+                            }
                         } else {
                             console.warn(`[Junon Automation] Input not found in edit_mode row for command ${i}`);
                         }
@@ -476,11 +561,35 @@ class JunonAutomation {
     async run() {
         try {
             // Ensure menu is open
-            if (!document.querySelector(this.selectors.menu)) {
+            const menu = document.querySelector(this.selectors.menu);
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:run',message:'Checking if menu is open',data:{menuFound:!!menu},timestamp:Date.now(),sessionId:'debug-session',runId:'menu-handling',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            
+            if (!menu) {
                 console.log("Opening Command Blocks menu...");
-                // Simulate 'K' key press
-                document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK' }));
-                await this.wait(500);
+                // Try to click the command block button first
+                const hudBtn = document.querySelector('.command_block_hud_btn');
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:run',message:'Looking for command_block_hud_btn',data:{hudBtnFound:!!hudBtn},timestamp:Date.now(),sessionId:'debug-session',runId:'menu-handling',hypothesisId:'A'})}).catch(()=>{});
+                // #endregion
+                
+                if (hudBtn) {
+                    console.log("Found command_block_hud_btn, clicking...");
+                    hudBtn.click();
+                    await this.wait(500);
+                    
+                    // Verify menu opened
+                    const menuAfterClick = document.querySelector(this.selectors.menu);
+                    // #region agent log
+                    fetch('http://127.0.0.1:7242/ingest/bee00ae0-4be2-431a-8d40-d29a80d2e11f',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'junon_automation.js:run',message:'Menu opened after clicking hud button',data:{menuOpened:!!menuAfterClick},timestamp:Date.now(),sessionId:'debug-session',runId:'menu-handling',hypothesisId:'A'})}).catch(()=>{});
+                    // #endregion
+                } else {
+                    // Fallback: Simulate 'K' key press
+                    console.log("command_block_hud_btn not found, trying keyboard shortcut...");
+                    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', code: 'KeyK' }));
+                    await this.wait(500);
+                }
             }
 
             for (const trigger of this.config.triggers) {

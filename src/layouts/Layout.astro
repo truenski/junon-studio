@@ -2,6 +2,7 @@
 import { ToastProviders } from "@/components/ToastProviders";
 import combatArmorIcon from "@/assets/combat_armor.png";
 import "../index.css";
+import packageJson from "../../package.json";
 
 interface Props {
   title?: string;
@@ -9,6 +10,7 @@ interface Props {
 }
 
 const { title = "JUNON Code", currentPage = "editor" } = Astro.props;
+const version = packageJson.version || "0.0.0";
 
 const tabs = [
   { id: "editor", label: "Editor", href: "/" },
@@ -39,9 +41,12 @@ const tabs = [
               class="w-8 h-8"
             />
             <div>
-              <h1 class="text-lg font-display text-primary neon-glow leading-none">
-                JUNON
-              </h1>
+              <div class="flex items-center gap-2">
+                <h1 class="text-lg font-display text-primary neon-glow leading-none">
+                  JUNON
+                </h1>
+                <span class="text-xs text-muted-foreground font-mono">v{version}</span>
+              </div>
               <p class="text-[10px] text-muted-foreground font-ui uppercase tracking-widest">Code</p>
             </div>
           </div>

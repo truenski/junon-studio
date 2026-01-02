@@ -42,6 +42,7 @@ export function AiSelectionBubble({ position, selectedText, onClose }: AiSelecti
         >
           <Sparkles className="w-4 h-4 text-primary group-hover:animate-pulse" />
           <span className="text-sm font-ui text-foreground">Ask AI</span>
+          <span className="text-xs text-muted-foreground">(coming soon)</span>
         </button>
       ) : (
         <div className="w-72 glass-panel neon-border rounded-lg p-3 space-y-3">
@@ -49,6 +50,7 @@ export function AiSelectionBubble({ position, selectedText, onClose }: AiSelecti
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
               <span className="text-sm font-ui text-foreground">AI Assistant</span>
+              <span className="text-xs text-muted-foreground">(coming soon)</span>
             </div>
             <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />

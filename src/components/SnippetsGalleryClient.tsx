@@ -1,13 +1,17 @@
 import { useState } from "react";
-import { Copy, Check, Search, Tag, Code2, ChevronDown, ChevronUp } from "lucide-react";
+import { Copy, Check, Search, Tag, Code2, ChevronDown, ChevronUp, FileJson } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { snippets } from "@/lib/snippets";
+import { convertJunonToJSON } from "@/hooks/useJunonSyntax";
+import { useToast } from "@/hooks/use-toast";
 
 export function SnippetsGalleryClient() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [copiedJsonId, setCopiedJsonId] = useState<number | null>(null);
   const [expandedSnippets, setExpandedSnippets] = useState<Set<number>>(new Set());
+  const { toast } = useToast();
 
   const allTags = [...new Set(snippets.flatMap(s => s.tags))];
 
@@ -22,6 +26,26 @@ export function SnippetsGalleryClient() {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const handleCopyJSON = async (id: number, code: string) => {
+    try {
+      const jsonData = convertJunonToJSON(code);
+      const jsonString = JSON.stringify(jsonData, null, 2);
+      await navigator.clipboard.writeText(jsonString);
+      setCopiedJsonId(id);
+      toast({
+        title: "Copied as JSON",
+        description: "Snippet converted to JSON and copied to clipboard",
+      });
+      setTimeout(() => setCopiedJsonId(null), 2000);
+    } catch (error) {
+      toast({
+        title: "Failed to convert",
+        description: "Could not convert snippet to JSON",
+        variant: "destructive",
+      });
+    }
   };
 
   const toggleExpand = (id: number) => {
@@ -102,18 +126,46 @@ export function SnippetsGalleryClient() {
                   </h3>
                   <p className="text-xs text-muted-foreground mt-1">{snippet.description}</p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleCopy(snippet.id, snippet.code)}
-                  className="text-muted-foreground hover:text-primary shrink-0"
-                >
-                  {copiedId === snippet.id ? (
-                    <Check className="w-4 h-4 text-accent" />
-                  ) : (
-                    <Copy className="w-4 h-4" />
-                  )}
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopy(snippet.id, snippet.code)}
+                    className="text-muted-foreground hover:text-primary text-xs"
+                    title="Copy code as text"
+                  >
+                    {copiedId === snippet.id ? (
+                      <>
+                        <Check className="w-3 h-3 mr-1.5 text-accent" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3 mr-1.5" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopyJSON(snippet.id, snippet.code)}
+                    className="text-muted-foreground hover:text-primary text-xs"
+                    title="Copy code as JSON"
+                  >
+                    {copiedJsonId === snippet.id ? (
+                      <>
+                        <Check className="w-3 h-3 mr-1.5 text-accent" />
+                        <span>Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <FileJson className="w-3 h-3 mr-1.5" />
+                        <span>Copy JSON</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
               
               <div className="flex items-center gap-2 mt-3">

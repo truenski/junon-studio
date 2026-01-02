@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Junon Command Blocks Automation",
+  "name": "Junon Command Blocks to JSON Import/Export",
   "version": "1.0.0",
-  "description": "Automate the creation of Junon.io command blocks from JSON configuration",
+  "description": "Add new commands and export to JSON format Junon.io command blocks. ",
   "permissions": [
     "scripting",
     "activeTab",
@@ -13,7 +13,8 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Junon Automation"
+    "default_title": "Junon Automation",
+    "default_icon": "icons/icon48.png"
   },
   "background": {
     "service_worker": "background.js"
