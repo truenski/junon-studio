@@ -1,6 +1,9 @@
 // Junon syntax definitions and validation
 import { getCommandNames, getTriggerNames, getFunctionNames, type MDXCommand, type MDXTrigger, type MDXFunction, type MDXAction } from '@/lib/mdxLoader';
 
+// Feature flags
+export const ENABLE_PARENTHESIS_HIGHLIGHTING = true; // Set to false to disable parenthesis and function color highlighting
+
 // These will be populated dynamically from MDX data
 export let TRIGGER_EVENTS: readonly string[] = [] as const;
 export let COMMANDS: readonly string[] = [] as const;
@@ -13,6 +16,12 @@ let mdxTriggers: MDXTrigger[] = [];
 let mdxFunctions: MDXFunction[] = [];
 let mdxActions: MDXAction[] = [];
 let mdxVariables: Array<{ name: string }> = [];
+let mdxDataInitialized = false;
+
+// Check if MDX data is initialized
+export function isMDXDataInitialized(): boolean {
+  return mdxDataInitialized;
+}
 
 // Initialize MDX data (call this from CodeEditor on mount)
 export async function initializeMDXData() {
@@ -33,8 +42,10 @@ export async function initializeMDXData() {
     mdxActions = await getActions();
     mdxVariables = await getVariables();
     VARIABLES = mdxVariables.map(v => v.name) as any;
+    mdxDataInitialized = true;
   } catch (error) {
     console.error('Failed to initialize MDX data:', error);
+    mdxDataInitialized = false;
     // Fallback to default values
     TRIGGER_EVENTS = [
       'onPlayerJoin',
@@ -182,6 +193,80 @@ function extractFunctions(text: string): Array<{ name: string; startIndex: numbe
 }
 
 /**
+ * Map parentheses to functions and generate color mapping
+ * Returns a map of character positions to function IDs and colors
+ * Matches opening and closing parentheses correctly based on nesting depth
+ */
+export function mapParenthesesToFunctions(text: string): Map<number, { funcId: number; color: string; isOpen: boolean }> {
+  const mapping = new Map<number, { funcId: number; color: string; isOpen: boolean }>();
+  const functions = extractFunctions(text);
+  
+  // Soft color palette for functions
+  const colors = [
+    'text-blue-400/70',      // Soft blue
+    'text-purple-400/70',    // Soft purple
+    'text-pink-400/70',      // Soft pink
+    'text-cyan-400/70',      // Soft cyan
+    'text-green-400/70',     // Soft green
+    'text-yellow-400/70',    // Soft yellow
+    'text-orange-400/70',    // Soft orange
+    'text-indigo-400/70',     // Soft indigo
+  ];
+  
+  // First, map function names and their opening parentheses
+  const openParenToFunc = new Map<number, { funcId: number; color: string; openIndex: number }>();
+  
+  functions.forEach((func, idx) => {
+    const color = colors[idx % colors.length];
+    const funcId = idx;
+    
+    // Find opening parenthesis
+    const openParenIndex = func.startIndex + func.fullMatch.indexOf('(');
+    
+    if (openParenIndex >= 0 && openParenIndex < text.length) {
+      openParenToFunc.set(openParenIndex, { funcId, color, openIndex: openParenIndex });
+      
+      // Map the opening parenthesis
+      mapping.set(openParenIndex, { funcId, color, isOpen: true });
+      
+      // Also highlight the function name
+      for (let i = func.startIndex; i < openParenIndex; i++) {
+        if (i >= 0 && i < text.length) {
+          mapping.set(i, { funcId, color, isOpen: false }); // Use isOpen: false to indicate function name
+        }
+      }
+    }
+  });
+  
+  // Now match closing parentheses to their corresponding opening parentheses
+  // by tracking nesting depth
+  const openParens: Array<{ index: number; funcId: number; color: string }> = [];
+  
+  for (let i = 0; i < text.length; i++) {
+    if (text[i] === '(') {
+      const funcInfo = openParenToFunc.get(i);
+      if (funcInfo) {
+        openParens.push({ index: i, funcId: funcInfo.funcId, color: funcInfo.color });
+      } else {
+        // Unmatched opening paren (not part of a function)
+        openParens.push({ index: i, funcId: -1, color: 'text-destructive' });
+      }
+    } else if (text[i] === ')') {
+      if (openParens.length > 0) {
+        // Match this closing paren to the most recent opening paren (last in, first out)
+        const matchedOpen = openParens.pop()!;
+        mapping.set(i, { funcId: matchedOpen.funcId, color: matchedOpen.color, isOpen: false });
+      } else {
+        // Unmatched closing paren
+        mapping.set(i, { funcId: -1, color: 'text-destructive', isOpen: false });
+      }
+    }
+  }
+  
+  return mapping;
+}
+
+/**
  * Check if a function name is valid
  */
 function isValidFunction(funcName: string): boolean {
@@ -243,6 +328,98 @@ export function validateJunonCode(code: string): ValidationError[] {
     const vars = new Set<string>();
     trigger.variables?.forEach(v => vars.add(v.name));
     triggerVariables.set(trigger.name, vars);
+  });
+  
+  // Validate parentheses: check for unmatched parentheses and parentheses without functions
+  lines.forEach((line, lineIndex) => {
+    const functions = extractFunctions(line);
+    const functionOpenParens = new Set<number>();
+    const functionCloseParens = new Set<number>();
+    
+    // Mark parentheses that belong to functions
+    functions.forEach(func => {
+      const openParenIndex = func.startIndex + func.fullMatch.indexOf('(');
+      const closeParenIndex = func.endIndex - 1;
+      if (openParenIndex >= 0) functionOpenParens.add(openParenIndex);
+      if (closeParenIndex >= 0) functionCloseParens.add(closeParenIndex);
+    });
+    
+    // Track all parentheses positions
+    const openParens: number[] = [];
+    const closeParens: number[] = [];
+    
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '(') {
+        openParens.push(i);
+      } else if (line[i] === ')') {
+        closeParens.push(i);
+      }
+    }
+    
+    // Match parentheses and check for errors
+    let openIndex = 0;
+    let closeIndex = 0;
+    
+    while (openIndex < openParens.length || closeIndex < closeParens.length) {
+      if (closeIndex < closeParens.length && (openIndex >= openParens.length || closeParens[closeIndex] < openParens[openIndex])) {
+        // Unmatched closing parenthesis
+        if (!functionCloseParens.has(closeParens[closeIndex])) {
+          errors.push({
+            line: lineIndex,
+            column: closeParens[closeIndex],
+            length: 1,
+            message: 'Unmatched closing parenthesis'
+          });
+        }
+        closeIndex++;
+      } else if (openIndex < openParens.length) {
+        // Opening parenthesis
+        const openParen = openParens[openIndex];
+        if (!functionOpenParens.has(openParen)) {
+          // Check if there's a $functionName before this (
+          let hasFunction = false;
+          for (let j = openParen - 1; j >= 0 && j >= openParen - 50; j--) {
+            if (line[j] === '$') {
+              const beforeParen = line.substring(j, openParen).trim();
+              if (/^\$\w+\s*$/.test(beforeParen)) {
+                hasFunction = true;
+                break;
+              }
+            }
+            if (!/[\w\s]/.test(line[j])) break;
+          }
+          
+          if (!hasFunction) {
+            errors.push({
+              line: lineIndex,
+              column: openParen,
+              length: 1,
+              message: 'Parenthesis without function. Use $functionName(...) format.'
+            });
+          }
+        }
+        
+        // Try to find matching closing parenthesis
+        if (closeIndex < closeParens.length && closeParens[closeIndex] > openParen) {
+          closeIndex++;
+        }
+        openIndex++;
+      }
+    }
+    
+    // Check for remaining unmatched opening parentheses
+    while (openIndex < openParens.length) {
+      const openParen = openParens[openIndex];
+      if (!functionOpenParens.has(openParen)) {
+        errors.push({
+          line: lineIndex,
+          column: openParen,
+          length: 1,
+          message: 'Unmatched opening parenthesis'
+        });
+      }
+      openIndex++;
+    }
   });
   
   // Recursive validation function
@@ -1231,11 +1408,52 @@ export function getSuggestionContext(code: string, cursorPosition: number): Sugg
   const beforeCursor = code.slice(0, cursorPosition);
   const lines = beforeCursor.split('\n');
   const currentLine = lines[lines.length - 1] || '';
-  const trimmed = currentLine.trim();
   
-  // Check if we're typing after @trigger
-  if (/@trigger\s*$/.test(trimmed) || /@trigger\s+\w*$/.test(trimmed)) {
-    const partial = trimmed.match(/@trigger\s+(\w*)$/)?.[1] || '';
+  // Extract the word/token at the cursor position (not the whole line)
+  // Look backwards from cursor to find the start of the current word/token
+  let wordStart = cursorPosition - 1;
+  while (wordStart >= 0) {
+    const char = code[wordStart];
+    // Stop at whitespace or newline, but include $, @, /, and word characters
+    if (char === '\n' || (/\s/.test(char) && wordStart < cursorPosition - 1)) {
+      break;
+    }
+    // Include $, @, /, and word characters in the token
+    if (/[\w$@\/]/.test(char)) {
+      wordStart--;
+    } else {
+      break;
+    }
+  }
+  wordStart++; // Move back to first character of word
+  
+  // Extract the current word/token being typed
+  const currentWord = code.substring(wordStart, cursorPosition);
+  
+  // Find the current trigger context (look backwards for @trigger)
+  let currentTriggerName: string | null = null;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const line = lines[i];
+    const triggerMatch = line.match(/@trigger\s+(\w+)/);
+    if (triggerMatch) {
+      currentTriggerName = triggerMatch[1];
+      break;
+    }
+  }
+  
+  // Get trigger variables if we're inside a trigger block
+  let triggerVariables: string[] = [];
+  if (currentTriggerName) {
+    const trigger = mdxTriggers.find(trg => trg.name === currentTriggerName);
+    if (trigger && trigger.variables) {
+      triggerVariables = trigger.variables.map(v => v.name);
+    }
+  }
+  
+  // Check if we're typing after @trigger (special case - needs line context)
+  const triggerMatch = currentLine.match(/@trigger\s+(\w*)$/);
+  if (triggerMatch) {
+    const partial = triggerMatch[1] || '';
     const filtered = TRIGGER_EVENTS.filter(e => 
       e.toLowerCase().startsWith(partial.toLowerCase())
     );
@@ -1243,8 +1461,8 @@ export function getSuggestionContext(code: string, cursorPosition: number): Sugg
   }
   
   // Check if we're typing a command (starts with /)
-  if (trimmed.startsWith('/')) {
-    const partial = trimmed.match(/\/(\w*)$/)?.[1] || '';
+  if (currentWord.startsWith('/')) {
+    const partial = currentWord.substring(1); // Remove the /
     const filtered = COMMANDS.filter(c => 
       c.toLowerCase().startsWith(partial.toLowerCase())
     );
@@ -1254,38 +1472,69 @@ export function getSuggestionContext(code: string, cursorPosition: number): Sugg
   }
   
   // Check if we're typing a function or variable (starts with $)
-  if (trimmed.startsWith('$')) {
-    const partial = trimmed.match(/\$(\w*)$/)?.[1] || '';
+  if (currentWord.startsWith('$')) {
+    const partial = currentWord.substring(1); // Remove the $
+    
+    // If cursor is right after $ (no partial text), show functions, variables, and trigger variables
+    if (partial === '') {
+      const allSuggestions: string[] = [];
+      // Add functions (they already include $)
+      if (FUNCTIONS.length > 0) {
+        allSuggestions.push(...FUNCTIONS.slice(0, 30));
+      }
+      // Add trigger variables (need to add $)
+      if (triggerVariables.length > 0) {
+        allSuggestions.push(...triggerVariables.map(v => `$${v}`));
+      }
+      // Add global variables (need to add $)
+      if (VARIABLES.length > 0) {
+        allSuggestions.push(...VARIABLES.map(v => `$${v}`).slice(0, 30));
+      }
+      if (allSuggestions.length > 0) {
+        return { type: 'function', suggestions: allSuggestions };
+      }
+    }
     
     // Check for functions first (they include the $ in the name)
     const filteredFunctions = FUNCTIONS.filter(f => 
       f.toLowerCase().startsWith(`$${partial.toLowerCase()}`)
     );
-    if (filteredFunctions.length > 0) {
-      return { type: 'function', suggestions: filteredFunctions };
-    }
     
-    // Then check for variables (they don't include the $ in the name)
+    // Check for trigger variables (they don't include the $ in the name)
+    const filteredTriggerVars = triggerVariables.filter(v => 
+      v.toLowerCase().startsWith(partial.toLowerCase())
+    );
+    
+    // Check for global variables (they don't include the $ in the name)
     const filteredVariables = VARIABLES.filter(v => 
       v.toLowerCase().startsWith(partial.toLowerCase())
     );
-    if (filteredVariables.length > 0) {
-      return { type: 'variable', suggestions: filteredVariables.map(v => `$${v}`) };
+    
+    // Combine all if we have matches
+    if (filteredFunctions.length > 0 || filteredTriggerVars.length > 0 || filteredVariables.length > 0) {
+      const combined: string[] = [];
+      combined.push(...filteredFunctions);
+      combined.push(...filteredTriggerVars.map(v => `$${v}`));
+      combined.push(...filteredVariables.map(v => `$${v}`));
+      return { type: 'function', suggestions: combined };
     }
     
     // If no matches, return functions as fallback
     if (FUNCTIONS.length > 0) {
-      return { type: 'function', suggestions: FUNCTIONS.slice(0, 10) };
+      return { type: 'function', suggestions: FUNCTIONS.slice(0, 20) };
     }
   }
   
   // Check if we're typing a condition
-  if (/@if\s+\w*$/.test(trimmed)) {
-    const partial = trimmed.match(/@if\s+(\w*)$/)?.[1] || '';
+  const ifMatch = currentLine.match(/@if\s+(\w*)$/);
+  if (ifMatch) {
+    const partial = ifMatch[1] || '';
     const filtered = CONDITIONS.filter(c => 
       c.toLowerCase().includes(partial.toLowerCase())
     );
-    return { type: 'condition', suggestions: filtered };
+    if (filtered.length > 0) {
+      return { type: 'condition', suggestions: filtered };
+    }
   }
   
   // Check if we need an operator

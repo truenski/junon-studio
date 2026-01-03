@@ -12,12 +12,15 @@ import {
   getAutoIndent,
   convertJunonToJSON,
   initializeMDXData,
+  isMDXDataInitialized,
   TRIGGER_EVENTS,
   COMMANDS,
   getCommandData,
   getTriggerData,
   getFunctionData,
   getActionData,
+  mapParenthesesToFunctions,
+  ENABLE_PARENTHESIS_HIGHLIGHTING,
 } from "@/hooks/useJunonSyntax";
 import type { ValidationError } from "@/hooks/useJunonSyntax";
 import { saveFile, type TemporaryFile } from "@/lib/fileStorage";
@@ -79,8 +82,12 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
   }, []);
 
   // Initialize MDX data on mount
+  const [mdxInitialized, setMdxInitialized] = useState(false);
+  
   useEffect(() => {
-    initializeMDXData().catch(console.error);
+    initializeMDXData()
+      .then(() => setMdxInitialized(true))
+      .catch(console.error);
   }, []);
 
   // Update code when current file changes
@@ -105,21 +112,27 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
   }, [code, currentFile?.id, onFileChange]);
 
 
-  // Validate code on change
+  // Validate code on change (only after MDX data is initialized)
   useEffect(() => {
+    if (!mdxInitialized && !isMDXDataInitialized()) {
+      // Don't validate until MDX data is loaded
+      setErrors([]);
+      return;
+    }
+    
     const validationErrors = validateJunonCode(code);
     setErrors(validationErrors);
-  }, [code]);
+  }, [code, mdxInitialized]);
 
-  // Update suggestions based on cursor position (only auto for @trigger)
+  // Update suggestions based on cursor position (auto for @trigger and $function)
   const updateSuggestions = useCallback((forceShow = false) => {
     if (!editorRef.current) return;
     const cursorPos = editorRef.current.selectionStart;
     const context = getSuggestionContext(code, cursorPos);
     setSuggestions(context.suggestions);
     setSuggestionType(context.type);
-    // Only auto-show for trigger suggestions; others require manual trigger
-    const shouldAutoShow = context.type === 'trigger' && context.suggestions.length > 0;
+    // Auto-show for trigger and function suggestions
+    const shouldAutoShow = (context.type === 'trigger' || context.type === 'function') && context.suggestions.length > 0;
     setShowSuggestions(forceShow ? context.suggestions.length > 0 : shouldAutoShow);
     setSelectedSuggestionIndex(0);
   }, [code]);
@@ -260,6 +273,16 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
       const match = beforeCursor.match(/(\/\w*)$/);
       if (match) {
         replaceStart = cursorPos - match[1].length;
+      }
+    } else if (suggestionType === 'function') {
+      // Match $ followed by optional word characters
+      const match = beforeCursor.match(/(\$\w*)$/);
+      if (match) {
+        replaceStart = cursorPos - match[1].length;
+        // Ensure suggestion always starts with $ (functions already have it, but ensure it)
+        if (!suggestion.startsWith('$')) {
+          suggestion = '$' + suggestion;
+        }
       }
     } else if (suggestionType === 'condition') {
       const match = beforeCursor.match(/@if\s+(\w*)$/);
@@ -924,6 +947,9 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
 function highlightLine(line: string, lineIndex: number, errors: ValidationError[]): React.ReactNode {
   const lineErrors = errors.filter(e => e.line === lineIndex);
   
+  // Get function and parenthesis mapping (only if enabled)
+  const parenMapping = ENABLE_PARENTHESIS_HIGHLIGHTING ? mapParenthesesToFunctions(line) : new Map();
+  
   // Check if this line contains /variable set
   const isVariableSet = /\/variable\s+set/i.test(line);
   
@@ -931,77 +957,159 @@ function highlightLine(line: string, lineIndex: number, errors: ValidationError[
   const atKeywords = ['@trigger', '@commands', '@if', '@timer', '@event'];
   const controlWords = ['then', 'elseif'];
   
-  let result: React.ReactNode[] = [];
-  let remaining = line;
-  let position = 0;
-  
   // Process the line character by character for proper highlighting
-  const parts: { text: string; type: string; hasError: boolean }[] = [];
+  const parts: Array<{ text: string; type: string; hasError: boolean; charIndex: number; parenInfo?: { funcId: number; color: string; isOpen: boolean } }> = [];
   
-  // Simple tokenizer
-  const tokens = remaining.split(/(\s+|@\w+|\/\w+|==|!=)/g).filter(Boolean);
+  // First, identify all keywords and commands in the line
+  const keywordRanges: Array<{ start: number; end: number; type: string }> = [];
   
-  tokens.forEach(token => {
-    const tokenStart = line.indexOf(token, position);
-    const hasError = lineErrors.some(e => 
-      tokenStart >= e.column && tokenStart < e.column + e.length
-    );
+  // Find @keywords
+  for (const kw of atKeywords) {
+    let searchStart = 0;
+    while (true) {
+      const index = line.indexOf(kw, searchStart);
+      if (index === -1) break;
+      keywordRanges.push({ 
+        start: index, 
+        end: index + kw.length, 
+        type: kw === '@event' ? 'deprecated' : 'keyword' 
+      });
+      searchStart = index + 1;
+    }
+  }
+  
+  // Find control words
+  for (const cw of controlWords) {
+    let searchStart = 0;
+    while (true) {
+      const index = line.indexOf(cw, searchStart);
+      if (index === -1) break;
+      // Check if it's a whole word (not part of another word)
+      const before = index === 0 ? ' ' : line[index - 1];
+      const after = index + cw.length >= line.length ? ' ' : line[index + cw.length];
+      if (/\s/.test(before) && /\s/.test(after)) {
+        keywordRanges.push({ start: index, end: index + cw.length, type: 'control' });
+      }
+      searchStart = index + 1;
+    }
+  }
+  
+  // Find commands (start with /)
+  const commandPattern = /(\/\w+)/g;
+  let match;
+  while ((match = commandPattern.exec(line)) !== null) {
+    keywordRanges.push({ start: match.index, end: match.index + match[1].length, type: 'command' });
+  }
+  
+  // Find numbers
+  const numberPattern = /\b(\d+)\b/g;
+  while ((match = numberPattern.exec(line)) !== null) {
+    keywordRanges.push({ start: match.index, end: match.index + match[1].length, type: 'number' });
+  }
+  
+  // Find operators
+  if (line.includes('==')) {
+    const index = line.indexOf('==');
+    keywordRanges.push({ start: index, end: index + 2, type: 'operator' });
+  }
+  if (line.includes('!=')) {
+    const index = line.indexOf('!=');
+    keywordRanges.push({ start: index, end: index + 2, type: 'operator' });
+  }
+  
+  // Find conditions (player., entity., game.)
+  const conditionPattern = /\b(player|entity|game)\.\w+/g;
+  while ((match = conditionPattern.exec(line)) !== null) {
+    keywordRanges.push({ start: match.index, end: match.index + match[0].length, type: 'condition' });
+  }
+  
+  // Process character by character
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const hasError = lineErrors.some(e => i >= e.column && i < e.column + e.length);
+    const errorMessage = lineErrors.find(e => i >= e.column && i < e.column + e.length)?.message;
+    
+    // Check if this character is part of a function/parenthesis mapping
+    const parenInfo = parenMapping.get(i);
     
     let type = 'normal';
     
-    // If this is a variable declaration line, highlight all non-whitespace tokens in yellow
-    if (isVariableSet && !token.match(/^\s+$/)) {
-      type = 'variable-declaration';
-    } else if (atKeywords.includes(token)) {
-      type = token === '@event' ? 'deprecated' : 'keyword';
-    } else if (controlWords.includes(token)) {
-      type = 'control';
-    } else if (token.startsWith('/')) {
-      type = 'command';
-    } else if (token === '==' || token === '!=') {
-      type = 'operator';
-    } else if (/^\d+$/.test(token)) {
-      type = 'number';
-    } else if (token.startsWith('player.') || token.startsWith('entity.') || token.startsWith('game.')) {
-      type = 'condition';
+    // If character is mapped (part of function or parenthesis), use that
+    if (parenInfo) {
+      if (char === '(' || char === ')') {
+        type = 'parenthesis';
+      } else if (char === '$' || /[\w]/.test(char)) {
+        type = 'function';
+      }
+    } else {
+      // Check if character is part of a keyword/command range
+      const keywordRange = keywordRanges.find(range => i >= range.start && i < range.end);
+      if (keywordRange) {
+        type = keywordRange.type;
+      } else {
+        // Regular syntax highlighting for other characters
+        if (isVariableSet && !/\s/.test(char)) {
+          type = 'variable-declaration';
+        } else if (char === '(' || char === ')') {
+          type = 'parenthesis-error';
+        }
+      }
     }
     
-    parts.push({ text: token, type, hasError });
-    position = tokenStart + token.length;
-  });
+    parts.push({ 
+      text: char, 
+      type, 
+      hasError, 
+      charIndex: i,
+      parenInfo: parenInfo 
+    });
+  }
   
   return (
     <span>
       {parts.map((part, i) => {
         let className = '';
         
-        switch (part.type) {
-          case 'keyword':
-            className = 'text-secondary font-semibold';
-            break;
-          case 'deprecated':
-            className = 'text-destructive line-through';
-            break;
-          case 'control':
-            className = 'text-accent font-semibold';
-            break;
-          case 'command':
-            className = 'text-primary';
-            break;
-          case 'variable-declaration':
-            className = 'text-yellow-400 font-semibold';
-            break;
-          case 'operator':
-            className = 'text-neon-purple';
-            break;
-          case 'number':
-            className = 'text-neon-orange';
-            break;
-          case 'condition':
-            className = 'text-neon-cyan';
-            break;
-          default:
-            className = 'text-foreground';
+        // Check for parenthesis or function highlighting first
+        if (part.parenInfo) {
+          className = part.parenInfo.color;
+          if (part.type === 'parenthesis') {
+            className += ' font-semibold';
+          } else if (part.type === 'function') {
+            className += ' font-medium';
+          }
+        } else {
+          switch (part.type) {
+            case 'keyword':
+              className = 'text-secondary font-semibold';
+              break;
+            case 'deprecated':
+              className = 'text-destructive line-through';
+              break;
+            case 'control':
+              className = 'text-accent font-semibold';
+              break;
+            case 'command':
+              className = 'text-primary';
+              break;
+            case 'variable-declaration':
+              className = 'text-yellow-400 font-semibold';
+              break;
+            case 'operator':
+              className = 'text-neon-purple';
+              break;
+            case 'number':
+              className = 'text-neon-orange';
+              break;
+            case 'condition':
+              className = 'text-neon-cyan';
+              break;
+            case 'parenthesis-error':
+              className = 'text-destructive font-semibold';
+              break;
+            default:
+              className = 'text-foreground';
+          }
         }
         
         if (part.hasError) {
@@ -1009,7 +1117,7 @@ function highlightLine(line: string, lineIndex: number, errors: ValidationError[
             <span 
               key={i} 
               className={`${className} underline decoration-wavy decoration-destructive`}
-              title={lineErrors.find(e => line.indexOf(part.text) >= e.column)?.message}
+              title={lineErrors.find(e => part.charIndex >= e.column && part.charIndex < e.column + e.length)?.message}
             >
               {part.text}
             </span>
