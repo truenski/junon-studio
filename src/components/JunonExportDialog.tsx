@@ -53,8 +53,40 @@ export function JunonExportDialog({ open, onOpenChange }: JunonExportDialogProps
       // Create ZIP
       const zip = new JSZip();
       
-      // Add all files to ZIP
-      for (const file of files) {
+      // CRITICAL: Add manifest.json FIRST and ensure it's in the root
+      const manifestIndex = files.indexOf('manifest.json');
+      if (manifestIndex === -1) {
+        throw new Error('manifest.json not found in extension files');
+      }
+      
+      // Fetch and validate manifest.json first
+      const manifestResponse = await fetch('/api/chrome-extension-files?file=manifest.json');
+      if (!manifestResponse.ok) {
+        throw new Error('Failed to fetch manifest.json');
+      }
+      const manifestText = await manifestResponse.text();
+      
+      // Validate JSON
+      let manifestJson;
+      try {
+        manifestJson = JSON.parse(manifestText);
+      } catch (e) {
+        console.error('Invalid JSON in manifest.json:', e);
+        throw new Error(`manifest.json is invalid JSON: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
+      
+      // Ensure manifest_version exists
+      if (!manifestJson.manifest_version) {
+        throw new Error('manifest.json is missing manifest_version field');
+      }
+      
+      // Add manifest.json to root of ZIP (no subdirectory)
+      zip.file('manifest.json', manifestText);
+      console.log('✓ manifest.json added to ZIP root');
+      
+      // Add all other files to ZIP (excluding manifest.json as we already added it)
+      const otherFiles = files.filter(f => f !== 'manifest.json');
+      for (const file of otherFiles) {
         try {
           const fileResponse = await fetch(`/api/chrome-extension-files?file=${encodeURIComponent(file)}`);
           if (!fileResponse.ok) {
@@ -66,25 +98,11 @@ export function JunonExportDialog({ open, onOpenChange }: JunonExportDialogProps
             const blob = await fileResponse.blob();
             zip.file(file, blob);
           } else {
-            // Ensure text files are read as UTF-8, especially important for manifest.json
             const text = await fileResponse.text();
-            // For manifest.json, ensure it's valid JSON
-            if (file === 'manifest.json') {
-              try {
-                JSON.parse(text); // Validate JSON
-              } catch (e) {
-                console.error('Invalid JSON in manifest.json:', e);
-                throw new Error('manifest.json is invalid');
-              }
-            }
             zip.file(file, text);
           }
         } catch (error) {
           console.warn(`Failed to add file ${file}:`, error);
-          // Don't skip manifest.json - it's critical
-          if (file === 'manifest.json') {
-            throw new Error(`Failed to include manifest.json: ${error instanceof Error ? error.message : 'Unknown error'}`);
-          }
         }
       }
 
@@ -95,8 +113,29 @@ export function JunonExportDialog({ open, onOpenChange }: JunonExportDialogProps
         zip.file('README.md', readmeText);
       }
 
-      // Generate ZIP file
-      const blob = await zip.generateAsync({ type: 'blob' });
+      // Verify manifest.json is in ZIP before generating
+      const zipFiles = Object.keys(zip.files);
+      if (!zipFiles.includes('manifest.json')) {
+        throw new Error('manifest.json was not included in ZIP file');
+      }
+      
+      // Check that manifest.json is in root (not in a subdirectory)
+      const manifestInZip = zip.files['manifest.json'];
+      if (!manifestInZip || manifestInZip.dir) {
+        throw new Error('manifest.json is not in ZIP root or is a directory');
+      }
+      
+      console.log('✓ ZIP prepared with', zipFiles.length, 'files');
+      console.log('✓ manifest.json verified in ZIP root');
+      
+      // Generate ZIP file with explicit options for better compatibility
+      const blob = await zip.generateAsync({ 
+        type: 'blob',
+        compression: 'DEFLATE',
+        compressionOptions: { level: 6 }
+      });
+      
+      console.log('✓ ZIP generated successfully, size:', (blob.size / 1024).toFixed(2), 'KB');
       
       // Download
       const url = URL.createObjectURL(blob);

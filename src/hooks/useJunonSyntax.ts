@@ -111,6 +111,124 @@ export interface JunonCodeJSON {
   triggers: TriggerBlock[];
 }
 
+/**
+ * Extract all function calls from a string (including nested ones)
+ * Returns array of { name, startIndex, endIndex }
+ */
+function extractFunctions(text: string): Array<{ name: string; startIndex: number; endIndex: number; fullMatch: string }> {
+  const functions: Array<{ name: string; startIndex: number; endIndex: number; fullMatch: string }> = [];
+  const processed = new Set<number>(); // Track processed function start positions to avoid duplicates
+  
+  // Recursive function to extract functions from a substring
+  const extractFromRange = (start: number, end: number) => {
+    for (let i = start; i < end && i < text.length; i++) {
+      // Look for $ followed by word characters and optional whitespace and (
+      if (text[i] === '$' && i + 1 < text.length && !processed.has(i)) {
+        let j = i + 1;
+        // Extract function name
+        while (j < text.length && /[\w]/.test(text[j])) {
+          j++;
+        }
+        
+        if (j > i + 1) {
+          const funcName = text.substring(i + 1, j);
+          // Skip whitespace
+          while (j < text.length && /\s/.test(text[j])) {
+            j++;
+          }
+          
+          // Check if followed by opening paren
+          if (j < text.length && text[j] === '(') {
+            processed.add(i); // Mark as processed
+            const funcStartIndex = i;
+            const openParenIndex = j;
+            let parenCount = 0;
+            let k = openParenIndex;
+            
+            // Find the matching closing paren
+            while (k < text.length && k < end) {
+              if (text[k] === '(') parenCount++;
+              if (text[k] === ')') {
+                if (parenCount === 0) {
+                  const funcEndIndex = k + 1;
+                  const fullMatch = text.substring(funcStartIndex, funcEndIndex);
+                  
+                  // Recursively extract functions from inside this function's arguments
+                  extractFromRange(openParenIndex + 1, k);
+                  
+                  // Add this function to the list
+                  functions.push({
+                    name: funcName,
+                    startIndex: funcStartIndex,
+                    endIndex: funcEndIndex,
+                    fullMatch
+                  });
+                  
+                  break;
+                }
+                parenCount--;
+              }
+              k++;
+            }
+          }
+        }
+      }
+    }
+  };
+  
+  extractFromRange(0, text.length);
+  
+  return functions;
+}
+
+/**
+ * Check if a function name is valid
+ */
+function isValidFunction(funcName: string): boolean {
+  if (FUNCTIONS.length === 0) return true; // If functions not loaded, allow all
+  return FUNCTIONS.some(f => {
+    // Remove $ prefix from both for comparison
+    const fName = f.startsWith('$') ? f.substring(1) : f;
+    const compareName = funcName.startsWith('$') ? funcName.substring(1) : funcName;
+    return fName === compareName;
+  });
+}
+
+/**
+ * Extract simple variables (not function calls) from text
+ */
+function extractSimpleVariables(text: string): Array<{ name: string; index: number }> {
+  const variables: Array<{ name: string; index: number }> = [];
+  const varPattern = /\$(\w+)/g;
+  let match;
+  
+  // First, find all function calls to exclude them
+  const functions = extractFunctions(text);
+  const functionRanges = functions.map(f => ({ start: f.startIndex, end: f.endIndex }));
+  
+  // Reset regex lastIndex
+  varPattern.lastIndex = 0;
+  
+  while ((match = varPattern.exec(text)) !== null) {
+    const varName = match[1];
+    const index = match.index;
+    
+    // Check if this is inside a function call
+    // We need to check if the $var is part of a function call pattern $func(
+    // If it's followed by a parenthesis, it's a function, not a variable
+    const isFunctionCall = text[index + varName.length + 1] === '(';
+    
+    // Also check if it's inside another function's range
+    const isInFunctionRange = functionRanges.some(range => index >= range.start && index < range.end);
+    
+    if (!isFunctionCall && !isInFunctionRange) {
+      variables.push({ name: varName, index });
+    }
+  }
+  
+  return variables;
+}
+
 export function validateJunonCode(code: string): ValidationError[] {
   const errors: ValidationError[] = [];
   const lines = code.split('\n');
@@ -201,21 +319,36 @@ export function validateJunonCode(code: string): ValidationError[] {
               }
             }
             
-            // Extract and validate variables
-            const variableMatches = cmdTrimmed.matchAll(/\$(\w+)/g);
-            for (const match of variableMatches) {
-              const varName = match[1];
-              // Check if it's a function call (e.g., $getHealth($player))
-              if (varName.includes('(')) continue;
+            // Extract and validate functions first (including nested ones)
+            const functions = extractFunctions(cmdTrimmed);
+            for (const func of functions) {
+              if (!isValidFunction(func.name)) {
+                // Calculate column offset within the full line
+                const lineStart = line.indexOf(cmdTrimmed);
+                errors.push({
+                  line: i,
+                  column: lineStart + func.startIndex,
+                  length: func.name.length + 1,
+                  message: `Unknown function: $${func.name}. Check available functions.`
+                });
+              }
+            }
+            
+            // Extract and validate simple variables (not function calls)
+            const simpleVars = extractSimpleVariables(cmdTrimmed);
+            for (const varInfo of simpleVars) {
+              const varName = varInfo.name;
               
               // Check if variable is declared or is a trigger variable
               const isDeclared = declaredVariables.has(varName);
               const isTriggerVar = triggerName && triggerVariables.get(triggerName)?.has(varName);
               
-              if (!isDeclared && !isTriggerVar && !FUNCTIONS.some(f => f.startsWith(`$${varName}`))) {
+              if (!isDeclared && !isTriggerVar) {
+                // Calculate column offset within the full line
+                const lineStart = line.indexOf(cmdTrimmed);
                 errors.push({
                   line: i,
-                  column: cmdTrimmed.indexOf(`$${varName}`),
+                  column: lineStart + varInfo.index,
                   length: varName.length + 1,
                   message: `Unknown variable: $${varName}. Declare it with /variable set or check trigger variables.`
                 });
@@ -409,21 +542,32 @@ export function validateJunonCode(code: string): ValidationError[] {
           }
         }
         
-        // Extract and validate variables
-        const variableMatches = trimmed.matchAll(/\$(\w+)/g);
-        for (const match of variableMatches) {
-          const varName = match[1];
-          // Check if it's a function call (e.g., $getHealth($player))
-          if (varName.includes('(')) continue;
+        // Extract and validate functions first (including nested ones)
+        const functions = extractFunctions(trimmed);
+        for (const func of functions) {
+          if (!isValidFunction(func.name)) {
+            errors.push({
+              line: i,
+              column: func.startIndex,
+              length: func.name.length + 1,
+              message: `Unknown function: $${func.name}. Check available functions.`
+            });
+          }
+        }
+        
+        // Extract and validate simple variables (not function calls)
+        const simpleVars = extractSimpleVariables(trimmed);
+        for (const varInfo of simpleVars) {
+          const varName = varInfo.name;
           
           // Check if variable is declared or is a trigger variable
           const isDeclared = declaredVariables.has(varName);
           const isTriggerVar = triggerName && triggerVariables.get(triggerName)?.has(varName);
           
-          if (!isDeclared && !isTriggerVar && !FUNCTIONS.some(f => f.startsWith(`$${varName}`))) {
+          if (!isDeclared && !isTriggerVar) {
             errors.push({
               line: i,
-              column: trimmed.indexOf(`$${varName}`),
+              column: varInfo.index,
               length: varName.length + 1,
               message: `Unknown variable: $${varName}. Declare it with /variable set or check trigger variables.`
             });

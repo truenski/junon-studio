@@ -8,18 +8,49 @@ Chrome extension para importar e exportar código do Junon Code Editor para comm
 
 ### Passo 1: Preparar a Extensão
 
-1. **Baixe o arquivo ZIP** da extensão
-2. **Extraia todos os arquivos** para um local de fácil acesso no seu computador (ex: `C:\Users\SeuNome\Downloads\junon-extension\`)
-3. **IMPORTANTE**: Certifique-se de que todos os arquivos foram extraídos corretamente:
-   - `manifest.json` ← **Este arquivo é essencial!**
-   - `popup.html`
-   - `popup.js`
-   - `content.js`
-   - `background.js`
-   - `junon_automation.js`
-   - Pasta `icons/` com os ícones (icon16.png, icon48.png, icon128.png)
+1. **Baixe o arquivo ZIP** da extensão (`junon-chrome-extension.zip`)
+2. **Extraia o ZIP** usando o Windows Explorer (clique com botão direito → "Extrair Tudo...")
+3. **IMPORTANTE**: Ao extrair, certifique-se de:
+   - Extrair para uma pasta vazia (ex: `C:\Users\SeuNome\Downloads\junon-extension\`)
+   - **NÃO** extrair dentro de outra pasta com o mesmo nome do ZIP
+   - O arquivo `manifest.json` deve estar **diretamente** na pasta extraída, não em uma subpasta
 
-**Verificação rápida**: Abra a pasta extraída e confirme que o arquivo `manifest.json` está presente na raiz da pasta (não dentro de uma subpasta).
+4. **Verifique a estrutura** - A pasta extraída deve ter esta estrutura:
+   ```
+   junon-extension/
+   ├── manifest.json          ← DEVE estar aqui (na raiz)
+   ├── popup.html
+   ├── popup.js
+   ├── content.js
+   ├── background.js
+   ├── junon_automation.js
+   └── icons/
+       ├── icon16.png
+       ├── icon48.png
+       └── icon128.png
+   ```
+
+**⚠️ PROBLEMA COMUM NO WINDOWS**: 
+- Ao extrair com Windows Explorer, pode criar uma estrutura como `junon-chrome-extension (1)/junon-chrome-extension/manifest.json`
+- **Solução**: Navegue até a pasta interna que contém o `manifest.json` diretamente
+- **Ou**: Extraia manualmente selecionando "Extrair para junon-extension\" e depois use a pasta criada
+
+**✅ Estrutura CORRETA após extrair:**
+```
+junon-extension/          ← Esta é a pasta que você deve selecionar no Edge
+├── manifest.json        ← DEVE estar aqui (visível imediatamente ao abrir a pasta)
+├── popup.html
+├── popup.js
+└── ...
+```
+
+**❌ Estrutura ERRADA (não use esta):**
+```
+junon-chrome-extension (1)/     ← Pasta externa (NÃO use esta)
+└── junon-chrome-extension/     ← Pasta interna (use esta)
+    ├── manifest.json
+    └── ...
+```
 
 ### Passo 2: Instalar no Chrome ou Microsoft Edge
 
@@ -102,19 +133,33 @@ Chrome extension para importar e exportar código do Junon Code Editor para comm
 
 ### Erro "Missing 'manifest_version' key" no Microsoft Edge
 Se você receber este erro ao tentar carregar a extensão no Edge:
-1. **Certifique-se de que extraiu TODOS os arquivos** da pasta ZIP
-2. **Verifique se o arquivo `manifest.json` está presente** na pasta raiz
-3. **Não selecione o arquivo ZIP**, mas sim a pasta descompactada
-4. **Verifique a codificação do arquivo**: O `manifest.json` deve estar em UTF-8
-5. **Tente recarregar a extensão**: Remova a extensão e carregue novamente
-6. **Verifique se não há espaços ou caracteres especiais** no nome da pasta
 
-**Passos detalhados para Edge:**
-1. Extraia o ZIP em uma pasta (ex: `C:\Users\SeuNome\Downloads\junon-extension\`)
-2. Abra o Edge e vá para `edge://extensions/`
-3. Ative "Modo do desenvolvedor" (canto inferior esquerdo)
-4. Clique em "Carregar sem compactação"
-5. Selecione a pasta que contém o `manifest.json` (não selecione um arquivo, mas a pasta inteira)
+**Solução Passo a Passo:**
+
+1. **Verifique a estrutura da pasta extraída:**
+   - Abra a pasta onde você extraiu o ZIP
+   - O arquivo `manifest.json` deve estar **diretamente** nesta pasta
+   - Se você ver `junon-extension/junon-extension/manifest.json`, você está na pasta errada
+   - Navegue até a pasta que contém `manifest.json` diretamente
+
+2. **Abra o manifest.json para verificar:**
+   - Clique com botão direito em `manifest.json` → "Abrir com" → "Bloco de Notas"
+   - A primeira linha deve ser: `{`
+   - A segunda linha deve ser: `  "manifest_version": 3,`
+   - Se não estiver assim, o arquivo pode estar corrompido
+
+3. **No Microsoft Edge:**
+   - Abra `edge://extensions/`
+   - Ative "Modo do desenvolvedor" (canto inferior esquerdo)
+   - Clique em "Carregar sem compactação"
+   - **Selecione a pasta** que contém o `manifest.json` diretamente
+   - **NÃO** selecione o arquivo ZIP ou uma subpasta
+
+4. **Se ainda não funcionar:**
+   - Feche completamente o Edge
+   - Reabra o Edge
+   - Tente novamente os passos acima
+   - Verifique se há mensagens de erro adicionais no console do Edge (F12 → Console)
 
 ### A extensão não aparece
 - Verifique se o "Modo do desenvolvedor" está ativado
