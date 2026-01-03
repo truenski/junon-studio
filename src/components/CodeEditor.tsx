@@ -759,11 +759,11 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
       {/* Code Area with Resizable Bottom Panel */}
       <ResizablePanelGroup direction="vertical" className="flex-1">
         <ResizablePanel defaultSize={100} minSize={30} maxSize={100}>
-          <div className="h-full relative overflow-auto bg-background">
-        {/* Line numbers - fixed position */}
+          <div className="h-full relative bg-background flex">
+        {/* Line numbers - fixed position, outside scroll flow */}
         <div 
           ref={lineNumbersRef}
-          className="absolute left-0 top-0 bottom-0 w-12 bg-muted/30 border-r border-border/30 overflow-hidden select-none z-30"
+          className="flex-shrink-0 w-12 bg-muted/30 border-r border-border/30 overflow-y-auto overflow-x-hidden select-none z-50"
         >
           <div className="pt-4 pr-2 text-right">
             {code.split('\n').map((_, i) => (
@@ -781,10 +781,12 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
           </div>
         </div>
         
+        {/* Scrollable content area */}
+        <div className="flex-1 relative overflow-auto">
         {/* Code display layer */}
         <pre 
           ref={codeDisplayRef}
-          className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 whitespace-pre overflow-auto pointer-events-none"
+          className="absolute inset-0 pl-4 pr-4 pt-4 pb-4 font-mono text-sm leading-6 whitespace-pre overflow-auto pointer-events-none"
           aria-hidden="true"
         >
           {code.split('\n').map((line, lineIndex) => (
@@ -804,10 +806,11 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
           onScroll={handleScroll}
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          className="absolute inset-0 pl-14 pr-4 pt-4 pb-4 font-mono text-sm leading-6 bg-transparent text-transparent caret-primary resize-none focus:outline-none overflow-auto z-20 whitespace-pre"
+          className="absolute inset-0 pl-4 pr-4 pt-4 pb-4 font-mono text-sm leading-6 bg-transparent text-transparent caret-primary resize-none focus:outline-none overflow-auto z-10 whitespace-pre"
           spellCheck={false}
           autoFocus
         />
+        </div>
 
         {/* Suggestions dropdown */}
         {showSuggestions && suggestions.length > 0 && (
