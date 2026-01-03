@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Save, Copy, ChevronUp, ChevronDown, AlertCircle, Zap, Check, ExternalLink, IndentIncrease } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AiSelectionBubble } from "./AiSelectionBubble";
+import { ApiKeyDialog } from "./ApiKeyDialog";
 import { Logger } from "./Logger";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +67,7 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
   const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
   const [hoveredToken, setHoveredToken] = useState<string | null>(null);
   const hoverTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [apiKeyDialogOpen, setApiKeyDialogOpen] = useState(false);
   const { toast } = useToast();
   
   const editorRef = useRef<HTMLTextAreaElement>(null);
@@ -147,8 +149,11 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
       codeDisplayRef.current.scrollTop = scrollTop;
       codeDisplayRef.current.scrollLeft = scrollLeft;
     }
+    // Line numbers only scroll vertically, not horizontally
     if (lineNumbersRef.current) {
       lineNumbersRef.current.scrollTop = scrollTop;
+      // Ensure line numbers stay fixed horizontally
+      lineNumbersRef.current.scrollLeft = 0;
     }
   }, []);
 
@@ -177,6 +182,14 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
   }, []);
 
   const handleAiClose = () => {
+    setShowAiBubble(false);
+    setSelectedText("");
+  };
+
+  const handleCodeGenerated = (newCode: string) => {
+    // Insert new code at the top of existing code
+    const updatedCode = newCode.trim() + (code.trim() ? '\n\n' + code : '');
+    setCode(updatedCode);
     setShowAiBubble(false);
     setSelectedText("");
   };
@@ -596,7 +609,7 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
   }, []);
 
   // Handle mouse move on code display
-  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLPreElement>) => {
+  const handleMouseMove = useCallback((e: React.MouseEvent<HTMLTextAreaElement | HTMLPreElement>) => {
     const result = getTokenAtPosition(e.clientX, e.clientY);
     
     if (result && result.token && result.type) {
@@ -750,7 +763,7 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
         {/* Line numbers - fixed position */}
         <div 
           ref={lineNumbersRef}
-          className="absolute left-0 top-0 bottom-0 w-12 bg-muted/30 border-r border-border/30 overflow-hidden select-none z-10"
+          className="absolute left-0 top-0 bottom-0 w-12 bg-muted/30 border-r border-border/30 overflow-hidden select-none z-30"
         >
           <div className="pt-4 pr-2 text-right">
             {code.split('\n').map((_, i) => (
@@ -922,9 +935,18 @@ export function CodeEditor({ currentFile, onFileChange }: CodeEditorProps = {}) 
         <AiSelectionBubble
           position={selectionPosition}
           selectedText={selectedText}
+          existingCode={code}
           onClose={handleAiClose}
+          onCodeGenerated={handleCodeGenerated}
+          onOpenApiKeyDialog={() => setApiKeyDialogOpen(true)}
         />
       )}
+
+      {/* API Key Dialog */}
+      <ApiKeyDialog
+        open={apiKeyDialogOpen}
+        onOpenChange={setApiKeyDialogOpen}
+      />
 
       {/* Junon.io Export Dialog */}
       <JunonExportDialog

@@ -1,30 +1,93 @@
 import { useState } from "react";
-import { Sparkles, X, Send } from "lucide-react";
+import { Sparkles, X, Send, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { generateCode } from "@/lib/aiService";
+import { hasApiKey } from "@/lib/aiConfig";
+import { useToast } from "@/hooks/use-toast";
 
 interface AiSelectionBubbleProps {
   position: { x: number; y: number };
   selectedText: string;
+  existingCode: string;
   onClose: () => void;
+  onCodeGenerated: (code: string) => void;
+  onOpenApiKeyDialog: () => void;
 }
 
-export function AiSelectionBubble({ position, selectedText, onClose }: AiSelectionBubbleProps) {
+export function AiSelectionBubble({ 
+  position, 
+  selectedText, 
+  existingCode,
+  onClose, 
+  onCodeGenerated,
+  onOpenApiKeyDialog 
+}: AiSelectionBubbleProps) {
   const [showInput, setShowInput] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
-  const handleAskAi = () => {
+  const handleAskAi = async () => {
+    const hasKey = await hasApiKey();
+    if (!hasKey) {
+      toast({
+        title: "API Key Required",
+        description: "Please configure your Gemini API key to use AI features.",
+        variant: "destructive",
+      });
+      onOpenApiKeyDialog();
+      return;
+    }
     setShowInput(true);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!prompt.trim()) return;
+    
+    const hasKey = await hasApiKey();
+    if (!hasKey) {
+      toast({
+        title: "API Key Required",
+        description: "Please configure your Gemini API key to use AI features.",
+        variant: "destructive",
+      });
+      onOpenApiKeyDialog();
+      return;
+    }
+
     setIsLoading(true);
-    // Mock AI response delay
-    setTimeout(() => {
+    
+    try {
+      const result = await generateCode({
+        prompt: prompt.trim(),
+        existingCode,
+        selectedText: selectedText || undefined,
+      });
+
+      if (result.success && result.code) {
+        onCodeGenerated(result.code);
+        toast({
+          title: "Code Generated",
+          description: "New code has been added to the top of your editor.",
+        });
+        onClose();
+      } else {
+        toast({
+          title: "Generation Failed",
+          description: result.error || "Failed to generate code. Please try again.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error generating code:", error);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-      onClose();
-    }, 1500);
+    }
   };
 
   return (
@@ -42,7 +105,6 @@ export function AiSelectionBubble({ position, selectedText, onClose }: AiSelecti
         >
           <Sparkles className="w-4 h-4 text-primary group-hover:animate-pulse" />
           <span className="text-sm font-ui text-foreground">Ask AI</span>
-          <span className="text-xs text-muted-foreground">(coming soon)</span>
         </button>
       ) : (
         <div className="w-72 glass-panel neon-border rounded-lg p-3 space-y-3">
@@ -50,11 +112,19 @@ export function AiSelectionBubble({ position, selectedText, onClose }: AiSelecti
             <div className="flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-primary" />
               <span className="text-sm font-ui text-foreground">AI Assistant</span>
-              <span className="text-xs text-muted-foreground">(coming soon)</span>
             </div>
-            <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={onOpenApiKeyDialog}
+                className="text-muted-foreground hover:text-foreground p-1"
+                title="Configure API Key"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
+              <button onClick={onClose} className="text-muted-foreground hover:text-foreground">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
           
           <div className="text-xs text-muted-foreground bg-muted/50 rounded p-2 max-h-16 overflow-hidden">
